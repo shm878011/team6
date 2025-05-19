@@ -12,7 +12,7 @@ import com.example.team6.model.BottomNavRoute
 import com.example.team6.uicomponents.InfoScreen
 import com.example.team6.uicomponents.MapScreen
 import com.example.team6.uicomponents.MyPageScreen
-import com.example.team6.uicomponents.SearchScreen
+import com.example.team6.uicomponents.RecommendScreen
 
 @Composable
 fun MainScreen() {
@@ -32,7 +32,7 @@ fun MainScreen() {
                 MapScreen()
             }
             composable(BottomNavRoute.Search.route) {
-                SearchScreen()
+                RecommendScreen()
             }
             composable(BottomNavRoute.Info.route) {
                 InfoScreen()
