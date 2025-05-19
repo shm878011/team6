@@ -5,7 +5,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.team6.model.Routes
-import com.example.team6.uicomponents.HomeScreen
 import com.example.team6.uicomponents.LoginScreen
 import com.example.team6.uicomponents.SignupScreen
 
@@ -31,7 +30,7 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(Routes.Home.route) {
-            HomeScreen()
+            MainScreen()
         }
     }
 }
