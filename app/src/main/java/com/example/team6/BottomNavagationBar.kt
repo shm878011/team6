@@ -31,6 +31,7 @@ fun BottomNavigationBar(navController: NavHostController) {
         BottomNavRoute.items.forEach { screen ->
             val selected = currentDestination?.route == screen.route
             NavigationBarItem(
+
                 colors = NavigationBarItemDefaults.colors(
                     indicatorColor = Color.Transparent
                 ),
@@ -40,9 +41,14 @@ fun BottomNavigationBar(navController: NavHostController) {
                 label = { Text(screen.label) },
                 selected = currentDestination?.route == screen.route,
                 onClick = {
-                    if (currentDestination?.route != screen.route) {
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    val targetRoute = screen.route
+                    val currentRoute = currentDestination?.route
+
+                    if (currentRoute != targetRoute) {
+                        navController.navigate(targetRoute) {
+                            popUpTo(targetRoute) {
+                                inclusive = true
+                            }
                             launchSingleTop = true
                             restoreState = true
                         }
