@@ -27,10 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import com.example.team6.R
 
 @Composable
-fun RecommendScreen() {
+fun RecommendScreen(navController: NavHostController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -73,7 +74,9 @@ fun RecommendScreen() {
         Spacer(modifier = Modifier.height(48.dp))
 
         Button(
-            onClick = { },
+            onClick = {
+                navController.navigate("question")
+            },
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00BFFF)),
             modifier = Modifier
