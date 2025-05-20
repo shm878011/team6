@@ -99,5 +99,4 @@ private fun LoginScreenPreview() {
         onNavigateToSignup = {},
         onGuestLogin = {}
     )
-
 }
