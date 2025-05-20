@@ -30,7 +30,13 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(Routes.Home.route) {
-            MainScreen()
+            MainScreen(
+                onLogout = {
+                    navController.navigate(Routes.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }
