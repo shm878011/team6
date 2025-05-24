@@ -20,8 +20,8 @@ import com.example.team6.uicomponents.MyReviewsScreen
 import com.example.team6.uicomponents.MapScreen
 import com.example.team6.uicomponents.SearchScreen
 import com.example.team6.uicomponents.InfoScreen
-
-
+import com.example.team6.uicomponents.recommend.QuestionScreen
+import com.example.team6.uicomponents.recommend.ResultScreen
 
 
 @Composable
@@ -77,6 +77,12 @@ fun MainScreen(
                 LocationSettingScreen(navController)
             }
 
+            composable("question") {
+                QuestionScreen(navController = navController)
+            }
+            composable("result") {
+                ResultScreen(navController = navController)
+            }
         }
     }
 }
