@@ -1,5 +1,7 @@
 package com.example.team6.navGraph
 
+import QuestionScreen
+import ResultScreen
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -12,8 +14,7 @@ import com.example.team6.model.BottomNavRoute
 import com.example.team6.uicomponents.InfoScreen
 import com.example.team6.uicomponents.MapScreen
 import com.example.team6.uicomponents.MyPageScreen
-import com.example.team6.uicomponents.QuestionScreen
-import com.example.team6.uicomponents.RecommendScreen
+import com.example.team6.uicomponents.recommend.RecommendScreen
 
 @Composable
 fun MainScreen() {
@@ -42,7 +43,10 @@ fun MainScreen() {
                 MyPageScreen()
             }
             composable("question") {
-                QuestionScreen()
+                QuestionScreen(navController = navController)
+            }
+            composable("result") {
+                ResultScreen(navController = navController)
             }
         }
     }
