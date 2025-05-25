@@ -28,7 +28,6 @@ import com.example.team6.viewmodel.MainViewModel
 
 
 
-
 @Composable
 fun MainScreen(
     onLogout: () -> Unit // 상위 NavController에서 전달
@@ -86,6 +85,12 @@ fun MainScreen(
                 LocationSettingScreen(navController)
             }
 
+            composable("question") {
+                QuestionScreen(navController = navController)
+            }
+            composable("result") {
+                ResultScreen(navController = navController)
+            }
         }
     }
 }
