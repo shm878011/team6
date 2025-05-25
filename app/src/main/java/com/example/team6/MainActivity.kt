@@ -10,9 +10,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.team6.navGraph.NavGraph
 import com.example.team6.ui.theme.Team6Theme
+import com.example.team6.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,6 +23,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             Team6Theme {
                 val navController = rememberNavController()
+                //val mainViewModel: MainViewModel = viewModel()
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
@@ -28,7 +32,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        NavGraph(navController = navController) // ✅ 여기가 핵심
+                        NavGraph(navController = navController)
                     }
                 }
             }
