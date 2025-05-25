@@ -29,18 +29,20 @@ fun BottomNavigationBar(navController: NavHostController) {
                 colors = NavigationBarItemDefaults.colors(
                     indicatorColor = Color.Transparent
                 ),
-                icon = { Icon(screen.icon, contentDescription = screen.label,
-                    tint = if (selected) Color.Black else Color.Gray
-                ) },
+                icon = {
+                    Icon(
+                        screen.icon,
+                        contentDescription = screen.label,
+                        tint = if (selected) Color.Black else Color.Gray
+                    )
+                },
                 label = { Text(screen.label) },
                 selected = currentDestination?.route == screen.route,
                 onClick = {
-                    if (currentDestination?.route != screen.route) {
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                    navController.navigate(screen.route) {
+                        popUpTo(screen.route) { inclusive = true }
+                        launchSingleTop = true
+                        restoreState = false
                     }
                 }
             )

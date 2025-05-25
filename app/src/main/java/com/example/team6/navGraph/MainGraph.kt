@@ -22,8 +22,10 @@ import com.example.team6.uicomponents.LocationSettingScreen
 import com.example.team6.uicomponents.MyPageScreen
 import com.example.team6.uicomponents.MyReviewsScreen
 import com.example.team6.uicomponents.MapScreen
-import com.example.team6.uicomponents.SearchScreen
 import com.example.team6.uicomponents.InfoScreen
+import com.example.team6.uicomponents.recommend.QuestionScreen
+import com.example.team6.uicomponents.recommend.RecommendScreen
+import com.example.team6.uicomponents.recommend.ResultScreen
 import com.example.team6.viewmodel.MainViewModel
 
 
@@ -51,7 +53,7 @@ fun MainScreen(
                 MapScreen(viewModel)
             }
             composable(BottomNavRoute.Search.route) {
-                SearchScreen()
+                RecommendScreen(navController)
             }
             composable(BottomNavRoute.Info.route) {
                 InfoScreen()
