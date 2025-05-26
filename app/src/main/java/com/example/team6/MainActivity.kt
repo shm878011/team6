@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.team6.navGraph.NavGraph
 import com.example.team6.ui.theme.Team6Theme
+import com.example.team6.uicomponents.NaverMapScreen
 import com.example.team6.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
