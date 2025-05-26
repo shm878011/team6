@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,10 +26,89 @@ import com.example.team6.R
 import com.example.team6.model.Nursery
 import com.example.team6.model.dummyNurseries
 import com.example.team6.viewmodel.MainViewModel
+import com.naver.maps.geometry.LatLng
+import com.naver.maps.map.CameraPosition
+import com.naver.maps.map.CameraUpdate
+import com.naver.maps.map.compose.ExperimentalNaverMapApi
+import com.naver.maps.map.compose.LocationTrackingMode
+import com.naver.maps.map.compose.MapProperties
+import com.naver.maps.map.compose.MapUiSettings
+import com.naver.maps.map.compose.Marker
+import com.naver.maps.map.compose.NaverMap
+import com.naver.maps.map.compose.rememberCameraPositionState
+import com.naver.maps.map.compose.rememberFusedLocationSource
+import com.naver.maps.map.compose.rememberMarkerState
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalNaverMapApi::class)
+@Composable
+fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
+    val defaultPosition = LatLng(37.5408, 127.0793) // 건국대
+    val currentPosition = viewModel.currentLocation ?: defaultPosition
 
-@OptIn(ExperimentalMaterial3Api::class)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition(currentPosition, 15.0)
+    }
+    val locationSource = rememberFusedLocationSource()
+
+    LaunchedEffect(viewModel.currentLocation) {
+        viewModel.currentLocation?.let {
+            cameraPositionState.move(
+                CameraUpdate.toCameraPosition(CameraPosition(it, 15.0))
+            )
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        //지도
+        NaverMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            locationSource = locationSource,
+            properties = MapProperties(
+                locationTrackingMode = if (viewModel.currentLocation != null)
+                    LocationTrackingMode.Follow
+                else LocationTrackingMode.None
+            ),
+            uiSettings = MapUiSettings(
+                isLocationButtonEnabled = viewModel.currentLocation != null // 위치 설정되면 네이버 버튼 보이게
+            )
+        ) {
+            //현재 위치 설정 전 → 건국대 마커 표시
+            if (viewModel.currentLocation == null) {
+                Marker(
+                    state = rememberMarkerState(position = defaultPosition),
+                    captionText = "건국대학교"
+                )
+            }
+        }
+
+        // 커스텀 내 위치 버튼 (초기 상태에서만 보여짐)
+        if (viewModel.currentLocation == null) {
+            IconButton(
+                onClick = {
+                    cameraPositionState.move(
+                        CameraUpdate.toCameraPosition(CameraPosition(defaultPosition, 15.0))
+                    )
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+                    .background(Color.White, shape = CircleShape)
+                    .size(48.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_my_location_24),
+                    contentDescription = "내 위치로 이동",
+                    tint = Color.Black
+                )
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalNaverMapApi::class)
 @Composable
 fun MapScreen(viewModel: MainViewModel) {
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -44,12 +125,12 @@ fun MapScreen(viewModel: MainViewModel) {
     // 💡 항상 UI를 보여줌
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // 지도 배경 (예시용 회색)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.LightGray)
-        )
+        ){
+            NaverMapScreen(modifier = Modifier.fillMaxSize(),viewModel)
+        }
 
         // 상단 검색/필터 바
         Row(

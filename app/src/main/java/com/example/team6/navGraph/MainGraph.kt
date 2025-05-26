@@ -84,7 +84,7 @@ fun MainScreen(
                 FavoriteNurseriesScreen(favorites = viewModel.likedNurseries, navController)
             }
             composable("location_setting") {
-                LocationSettingScreen(navController)
+                LocationSettingScreen(navController,viewModel)
             }
 
             composable("question") {
