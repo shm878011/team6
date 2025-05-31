@@ -12,7 +12,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,8 +39,16 @@ import com.naver.maps.geometry.LatLng
 fun LocationSettingScreen(navController: NavController, viewModel: MainViewModel) {
     SubPage(title = "위치 설정", navController = navController) {
         // 내 위치
+
+        val address by viewModel.addressText.collectAsState()
+        var searchText by remember { mutableStateOf("") }
+        val context = LocalContext.current
+        val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+        val permissionState = rememberPermissionState(android.Manifest.permission.ACCESS_FINE_LOCATION)
+
         Text("내 위치", fontWeight = FontWeight.SemiBold)
-        Text("서울특별시 광진구 능동로 120 건국대학교")
+        Text(address)
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -46,14 +58,20 @@ fun LocationSettingScreen(navController: NavController, viewModel: MainViewModel
 
         Row {
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = searchText,
+                onValueChange = {searchText = it},
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("주소 검색") }
             )
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedButton(
-                onClick = { /* 주소 수정 로직 */ },
+                onClick = {
+                    if (searchText.isNotBlank()) {
+                        viewModel.searchAddress(searchText)
+                    } else {
+                        Toast.makeText(context, "주소를 입력해주세요", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 modifier = Modifier.align(Alignment.CenterVertically)
             ) {
                 Text("수정")
@@ -62,10 +80,7 @@ fun LocationSettingScreen(navController: NavController, viewModel: MainViewModel
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val context = LocalContext.current
-        val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-        val permissionState = rememberPermissionState(android.Manifest.permission.ACCESS_FINE_LOCATION)
 
         LaunchedEffect(Unit) {
             if (permissionState.status is PermissionStatus.Denied) {

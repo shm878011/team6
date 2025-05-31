@@ -16,6 +16,19 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField(
+            "String",
+            "NAVER_CLIENT_ID",
+            "\"${project.findProperty("NAVER_CLIENT_ID") ?: "DEFAULT_CLIENT_ID"}\""
+        )
+        buildConfigField(
+            "String",
+            "NAVER_CLIENT_SECRET",
+            "\"${project.findProperty("NAVER_CLIENT_SECRET") ?: "DEFAULT_CLIENT_SECRET"}\""
+        )
+
+
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -36,6 +49,7 @@ android {
         jvmTarget = "11"
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }
@@ -58,6 +72,8 @@ dependencies {
     implementation(libs.naver.map.compose)
     implementation(libs.play.services.location)
     implementation(libs.accompanist.permissions)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
