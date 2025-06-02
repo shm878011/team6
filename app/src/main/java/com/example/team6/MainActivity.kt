@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.team6.navGraph.NavGraph
+import com.example.team6.network.GeocodingTestScreen
 import com.example.team6.ui.theme.Team6Theme
 import com.example.team6.uicomponents.HomeScreen
 import com.example.team6.uicomponents.NaverMapScreen
@@ -34,10 +35,12 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        //NavGraph(navController = navController)
-                        HomeScreen()
+                        NavGraph(navController = navController)
+                        //HomeScreen()
+                        //GeocodingTestScreen()
                     }
                 }
+
             }
         }
     }

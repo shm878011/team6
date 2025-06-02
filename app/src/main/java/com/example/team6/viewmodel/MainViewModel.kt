@@ -8,12 +8,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.team6.model.KindergartenResponse
-import com.example.team6.model.KinderInfo
-import com.example.team6.model.Nursery
-import com.example.team6.model.SchoolBusInfo
-import com.example.team6.model.SchoolBusResponse
+import com.example.team6.model.*
 import com.example.team6.network.KindergartenApiService
+import com.example.team6.network.RetrofitClient
 import com.naver.maps.geometry.LatLng
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +23,6 @@ import java.io.InputStream
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -47,8 +43,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var currentLocation by mutableStateOf<LatLng?>(null)
         private set
 
+    private val _addressText = MutableStateFlow("서울특별시 광진구 능동로 120 건국대학교")
+    val addressText: StateFlow<String> = _addressText
+
     fun updateLocation(latLng: LatLng) {
         currentLocation = latLng
+        fetchAddressFromCoords(latLng)
+    }
+
+    fun fetchAddressFromCoords(latLng: LatLng) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.reverseGeocodingApi.getAddress(
+                    coords = "${latLng.longitude},${latLng.latitude}"
+                )
+                if (response.isSuccessful) {
+                    val region = response.body()?.results?.firstOrNull()?.region
+                    val fullAddress = listOfNotNull(
+                        region?.area1?.name,
+                        region?.area2?.name,
+                        region?.area3?.name
+                    ).joinToString(" ")
+                    _addressText.value = fullAddress
+                } else {
+                    _addressText.value = "주소를 찾을 수 없습니다"
+                }
+            } catch (e: Exception) {
+                _addressText.value = "주소를 찾을 수 없습니다"
+            }
+        }
+    }
+
+    fun searchAddress(query: String) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.geocodingApi.getGeocode(query)
+                if (response.isSuccessful) {
+                    val addr = response.body()?.addresses?.firstOrNull()
+                    if (addr != null && addr.x != null && addr.y != null) {
+                        val latLng = LatLng(addr.y!!.toDouble(), addr.x!!.toDouble())
+                        updateLocation(latLng)
+                    } else {
+                        _addressText.value = "주소를 찾을 수 없습니다"
+                    }
+                } else {
+                    _addressText.value = "주소를 찾을 수 없습니다"
+                }
+            } catch (e: Exception) {
+                _addressText.value = "주소를 찾을 수 없습니다"
+            }
+        }
     }
 
     private val TAG = "MainViewModelAPI"
@@ -72,9 +116,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         logging.setLevel(HttpLoggingInterceptor.Level.BODY)
 
         val client = OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
+            .addInterceptor(logging)
             .build()
 
         val retrofit = Retrofit.Builder()
@@ -109,7 +151,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val sidoCodeCell = row.getCell(1)
                     val sggNameCell = row.getCell(2)
                     val sggCodeCell = row.getCell(3)
-
 
                     if (sidoNameCell != null && sidoCodeCell != null && sggNameCell != null && sggCodeCell != null) {
                         val sidoName = sidoNameCell.toString().trim()

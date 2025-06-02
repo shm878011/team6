@@ -53,13 +53,18 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     }
     val locationSource = rememberFusedLocationSource()
 
+    val trackingMode = remember { mutableStateOf(LocationTrackingMode.Follow) }
+
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
             cameraPositionState.move(
                 CameraUpdate.toCameraPosition(CameraPosition(it, 15.0))
             )
+            trackingMode.value = LocationTrackingMode.None // 🔽 수동 위치 설정 시, 자동 추적 해제
         }
     }
+
+
 
     Box(modifier = modifier.fillMaxSize()) {
         //지도
@@ -68,9 +73,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             cameraPositionState = cameraPositionState,
             locationSource = locationSource,
             properties = MapProperties(
-                locationTrackingMode = if (viewModel.currentLocation != null)
-                    LocationTrackingMode.Follow
-                else LocationTrackingMode.None
+                locationTrackingMode = trackingMode.value // 🔽 상태 기반으로 추적 모드 설정
             ),
             uiSettings = MapUiSettings(
                 isLocationButtonEnabled = viewModel.currentLocation != null // 위치 설정되면 네이버 버튼 보이게
