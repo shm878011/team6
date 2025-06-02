@@ -43,8 +43,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalNaverMapApi::class)
 @Composable
 fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
-    val defaultPosition = LatLng(37.5408, 127.0793) // 건국대
+    val defaultPosition = LatLng(37.5408, 127.0793)
     val currentPosition = viewModel.currentLocation ?: defaultPosition
+
+    val kindergartenList by viewModel.kindergartenList.collectAsState()
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition(currentPosition, 15.0)

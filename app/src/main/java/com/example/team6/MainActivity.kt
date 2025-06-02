@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.team6.navGraph.NavGraph
 import com.example.team6.network.GeocodingTestScreen
 import com.example.team6.ui.theme.Team6Theme
+import com.example.team6.uicomponents.HomeScreen
 import com.example.team6.uicomponents.NaverMapScreen
 import com.example.team6.viewmodel.MainViewModel
 
@@ -25,7 +26,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Team6Theme {
                 val navController = rememberNavController()
-                //val mainViewModel: MainViewModel = viewModel()
+                val mainViewModel: MainViewModel = viewModel()
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
@@ -35,9 +36,11 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         NavGraph(navController = navController)
+                        //HomeScreen()
+                        //GeocodingTestScreen()
                     }
                 }
-                //GeocodingTestScreen()
+
             }
         }
     }
