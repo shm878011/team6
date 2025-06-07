@@ -1,7 +1,7 @@
 package com.example.team6.model
 
 data class TeacherInfo(
-    val kinderCode: String?,
+    val kindercode: String?,
     val officeedu: String?,
     val subofficeedu: String?,
     val kindername: String?,
