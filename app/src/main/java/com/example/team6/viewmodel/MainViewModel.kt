@@ -15,6 +15,7 @@ import com.example.team6.model.KinderInfo // KinderInfo 사용
 import com.example.team6.model.SchoolBusInfo // SchoolBusInfo 사용
 import com.example.team6.model.Nursery
 import com.example.team6.model.SafeInfo
+import com.example.team6.model.*
 import com.example.team6.network.KindergartenApiService
 import com.example.team6.network.RetrofitClient
 import com.naver.maps.geometry.LatLng
@@ -34,7 +35,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.nio.charset.Charset
 import kotlin.collections.List
-
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -618,4 +618,5 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+}
 }
