@@ -36,6 +36,8 @@ import com.naver.maps.map.compose.NaverMap
 import com.naver.maps.map.compose.rememberCameraPositionState
 import com.naver.maps.map.compose.rememberFusedLocationSource
 import com.naver.maps.map.compose.rememberMarkerState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalNaverMapApi::class)
@@ -197,40 +199,50 @@ fun MapScreen(viewModel: MainViewModel) {
             FilterModal(
                 onClose = { showFilter = false },
                 onFilterApplied = { selectedDistance, selectedConditions ->
-                    val sido = "서울특별시"
-                    val sgg = "광진구"
-                    viewModel.fetchKindergartenData(sido, sgg)
-                    if("통학차량 여부" in selectedConditions)
-                    {
-                         viewModel.fetchKindergartensWithSchoolBus(sido, sgg)
+                    scope.launch { // 비동기 작업을 위한 코루틴 스코프 시작
+                        val sido = "서울특별시"
+                        val sgg = "광진구"
+
+                        val fetchJobs = mutableListOf<Job>()
+
+                        fetchJobs.add(launch { viewModel.fetchKindergartenData(sido, sgg) })
+
+                        if("통학차량 여부" in selectedConditions)
+                        {
+                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSchoolBus(sido, sgg) })
+                        }
+                        else{
+                            viewModel.RemoveBus()
+                        }
+                        if("놀이터 여부" in selectedConditions)
+                        {
+                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSafePlayground(sido, sgg) })
+                        }
+                        else{
+                            viewModel.RemovePlayground()
+                        }
+                        if("CCTV 여부" in selectedConditions)
+                        {
+                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSafeCCTV(sido, sgg) })
+                        }
+                        else{
+                            viewModel.RemoveCCTV()
+                        }
+
+                        if("입소 가능" in selectedConditions)
+                        {
+                            viewModel.Canadmission(true)
+                        }
+                        else{
+                            viewModel.Canadmission(false)
+                        }
+
+                        fetchJobs.joinAll()
+
+                        viewModel.updateChecklist()
+                        showBottomSheet = checklist.isNotEmpty()
+                        showFilter = false
                     }
-                    else{
-                        viewModel.RemoveBus()
-                    }
-                    if("놀이터 여부" in selectedConditions)
-                    {
-                        viewModel.fetchKindergartensWithSafePlayground(sido, sgg)
-                    }
-                    else{
-                        viewModel.RemovePlayground()
-                    }
-                    if("CCTV 여부" in selectedConditions)
-                    {
-                        viewModel.fetchKindergartensWithSafeCCTV(sido, sgg)
-                    }
-                    else{
-                        viewModel.RemoveCCTV()
-                    }
-                    if("입소 가능" in selectedConditions)
-                    {
-                        viewModel.Canadmission(true)
-                    }
-                    else{
-                        viewModel.Canadmission(false)
-                    }
-                    viewModel.updateChecklist()
-                    showBottomSheet = checklist.isNotEmpty()
-                    showFilter = false
                 }
             )
         }

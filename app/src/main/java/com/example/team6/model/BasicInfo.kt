@@ -1,7 +1,7 @@
 package com.example.team6.model
 
 data class BasicInfo(
-    val kinderCode: String?, // 1 유치원코드
+    val kindercode: String?, // 1 유치원코드
     val officeedu: String?, // 2 교육청명
     val subofficeedu: String?, // 3 교육지원청명
     val kindername: String, // 4 유치원명 (비어있을 수 없으므로 String)

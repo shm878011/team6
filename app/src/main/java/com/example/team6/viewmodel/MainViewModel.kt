@@ -283,36 +283,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun fetchKindergartenData(sidoName: String, sggName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val codes = getSidoSggCodesByName(sidoName, sggName)
-            if (codes == null) {
-                Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
-                withContext(Dispatchers.Main) {
-                    _schoolBusKindergartens.value = emptyList()
-                }
-                return@launch
+    suspend fun fetchKindergartenData(sidoName: String, sggName: String) {
+        val codes = getSidoSggCodesByName(sidoName, sggName)
+
+        if (codes == null) {
+            Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
+            _kindergartenBasicList.value = emptyList()
+            return
+        }
+
+        val (sidoCode, sggCode) = codes
+        try {
+            val response = kindergartenApiService.getKindergartenBasicInfo(YOUR_API_KEY, sidoCode, sggCode)
+
+            if (response.status == "SUCCESS") {
+                Log.d(TAG, "API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${response.kinderInfo?.size ?: 0}")
+                _kindergartenBasicList.value = response.kinderInfo ?: emptyList()
+            } else {
+                Log.e(TAG, "API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                _kindergartenBasicList.value = emptyList()
             }
 
-            val (sidoCode, sggCode) = codes
-            try {
-                val response = kindergartenApiService.getKindergartenBasicInfo(YOUR_API_KEY, sidoCode, sggCode)
-
-                if (response.status == "SUCCESS") {
-                    withContext(Dispatchers.Main) {
-                        Log.d(TAG, "API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${response.kinderInfo?.size ?: 0}")
-                        _kindergartenBasicList.value = response.kinderInfo                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Log.e(TAG, "API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
-                    }
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Log.e(TAG, "네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
-                }
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+            _kindergartenBasicList.value = emptyList()
         }
     }
 
@@ -321,44 +315,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return nameToCodeMap[Pair(sidoName, sggName)]
     }
 
-    fun fetchKindergartensWithSchoolBus(sidoName: String, sggName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val codes = getSidoSggCodesByName(sidoName, sggName)
-            if (codes == null) {
-                Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
-                withContext(Dispatchers.Main) {
-                    _schoolBusKindergartens.value = emptyList()
-                }
-                return@launch
+    suspend fun fetchKindergartensWithSchoolBus(sidoName: String, sggName: String) {
+        val codes = getSidoSggCodesByName(sidoName, sggName)
+        if (codes == null) {
+            Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
+            _schoolBusKindergartens.value = emptyList() // StateFlow 업데이트 (withContext 불필요)
+            return
+        }
+
+        val (sidoCode, sggCode) = codes
+
+        try {
+            val response = kindergartenApiService.getKindergartenSchoolBusInfo(YOUR_API_KEY, sidoCode, sggCode)
+
+            if (response.status == "SUCCESS") {
+                val filteredList = response.schoolBusInfo
+                    ?.filterNotNull()
+                    ?.filter { it.vhcl_oprn_yn == "Y" }
+                    ?: emptyList()
+
+                _schoolBusKindergartens.value = filteredList
+                Log.d(TAG, "통학차량('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredList.size}")
+            } else {
+                Log.e(TAG, "통학차량 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
+                _schoolBusKindergartens.value = emptyList()
             }
-
-            val (sidoCode, sggCode) = codes
-
-            try {
-                val response = kindergartenApiService.getKindergartenSchoolBusInfo(YOUR_API_KEY, sidoCode, sggCode)
-
-                if (response.status == "SUCCESS") {
-                    val filteredList = response.schoolBusInfo
-                        ?.filterNotNull()
-                        ?.filter { it.vhcl_oprn_yn == "Y" } // SchoolBusInfo에 vhcl_oprn_yn 필드가 있어야 함
-                        ?: emptyList()
-
-                    withContext(Dispatchers.Main) {
-                        _schoolBusKindergartens.value = filteredList // schoolBusKindergartens 업데이트
-                        Log.d(TAG, "통학차량 운영('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredList.size}")
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Log.e(TAG, "통학차량 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                        _schoolBusKindergartens.value = emptyList()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Log.e(TAG, "통학차량 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
-                    _schoolBusKindergartens.value = emptyList()
-                }
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "통학차량 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+            _schoolBusKindergartens.value = emptyList()
         }
     }
 
@@ -367,12 +351,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG, "시작")
             var newChecklist: List<KinderInfo> = kindergartenList.value
             var changelist: List<BasicInfo> = _kindergartenBasicList.value
-
+            Log.d(TAG,"chagelist ${changelist}")
             if (changelist.isNotEmpty() && schoolBusKindergartens.value.isNotEmpty()) {
                 val schoolBusNames = schoolBusKindergartens.value.map { Pair(it.kindercode, it.kindername) }.toSet()
                 changelist = changelist.filter { kinderInfo ->
-                    Pair(kinderInfo.kinderCode, kinderInfo.kindername) in schoolBusNames
+                    Pair(kinderInfo.kindercode, kinderInfo.kindername) in schoolBusNames
                 }
+                Log.d(TAG,"schoolbusName ${schoolBusNames}")
                 Log.d(TAG, "Checklist 업데이트 (모드: 통학버스): ${changelist.size}개 유치원 매칭.")
             } else {
                 Log.d(TAG, "Checklist 업데이트(통학버스): 원본 리스트 중 하나 이상이 비어있음.")
@@ -383,7 +368,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .map { Pair(it.kindercode, it.kindername) }
                     .toSet()
                 changelist = changelist.filter { kinderInfo ->
-                    Pair(kinderInfo.kinderCode, kinderInfo.kindername) in safePlaygroundKinderNames
+                    Pair(kinderInfo.kindercode, kinderInfo.kindername) in safePlaygroundKinderNames
                 }
                 Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${changelist.size}개 유치원 매칭.")
             } else {
@@ -395,7 +380,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .map { Pair(it.kindercode, it.kindername) }
                     .toSet()
                 changelist = changelist.filter { kinderInfo ->
-                    Pair(kinderInfo.kinderCode, kinderInfo.kindername) in CCTVKinderNames
+                    Pair(kinderInfo.kindercode, kinderInfo.kindername) in CCTVKinderNames
                 }
                 Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${changelist.size}개 유치원 매칭.")
             } else {
@@ -418,85 +403,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun fetchKindergartensWithSafePlayground(sidoName: String, sggName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val codes = getSidoSggCodesByName(sidoName, sggName)
-            if (codes == null) {
-                Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
-                withContext(Dispatchers.Main) {
-                    _kindergartensWithSafePlayground.value = emptyList() // 코드 없으면 빈 리스트로 설정
-                }
-                return@launch
+    suspend fun fetchKindergartensWithSafePlayground(sidoName: String, sggName: String) {
+        val codes = getSidoSggCodesByName(sidoName, sggName)
+        if (codes == null) {
+            Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
+            _kindergartensWithSafePlayground.value = emptyList()
+            return
+        }
+
+        val (sidoCode, sggCode) = codes
+
+        try {
+            val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+
+            if (response.status == "SUCCESS") {
+                val filteredAndSummarizedList = response.safeInfo
+                    ?.filterNotNull()
+                    ?.filter { it.plyg_ck_yn == "Y" }
+                    ?: emptyList()
+
+                _kindergartensWithSafePlayground.value = filteredAndSummarizedList
+                Log.d(TAG, "놀이터 안전점검('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}")
+            } else {
+                Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
+                _kindergartensWithSafePlayground.value = emptyList()
             }
-
-            val (sidoCode, sggCode) = codes
-
-            try {
-                val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
-
-                if (response.status == "SUCCESS") {
-                    val filteredAndSummarizedList = response.safeInfo
-                        ?.filterNotNull()
-                        ?.filter { it.plyg_ck_yn == "Y" } // 놀이터 안전점검 실시 여부가 'Y'인 경우만 필터링
-                        ?: emptyList()
-
-                    withContext(Dispatchers.Main) {
-                        _kindergartensWithSafePlayground.value = filteredAndSummarizedList // 필터링된 리스트 업데이트
-                        Log.d(TAG, "놀이터 안전점검('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}")
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                        _kindergartensWithSafePlayground.value = emptyList()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
-                    _kindergartensWithSafePlayground.value = emptyList()
-                }
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+            _kindergartensWithSafePlayground.value = emptyList()
         }
     }
 
-    fun fetchKindergartensWithSafeCCTV(sidoName: String, sggName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val codes = getSidoSggCodesByName(sidoName, sggName)
-            if (codes == null) {
-                Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
-                withContext(Dispatchers.Main) {
-                    _kindergartensWithCCTV.value = emptyList() // 코드 없으면 빈 리스트로 설정
-                }
-                return@launch
+    suspend fun fetchKindergartensWithSafeCCTV(sidoName: String, sggName: String) {
+        val codes = getSidoSggCodesByName(sidoName, sggName)
+        if (codes == null) {
+            Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
+            _kindergartensWithCCTV.value = emptyList()
+            return
+        }
+
+        val (sidoCode, sggCode) = codes
+
+        try {
+            val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+
+            if (response.status == "SUCCESS") {
+                val filteredAndSummarizedList = response.safeInfo
+                    ?.filterNotNull()
+                    ?.filter { it.cctv_ist_yn == "Y" }
+                    ?: emptyList()
+
+                _kindergartensWithCCTV.value = filteredAndSummarizedList
+                Log.d(TAG, "CCTV('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}") // 로그 메시지 수정
+            } else {
+                Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
+                _kindergartensWithCCTV.value = emptyList()
             }
-
-            val (sidoCode, sggCode) = codes
-
-            try {
-                val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
-
-                if (response.status == "SUCCESS") {
-                    val filteredAndSummarizedList = response.safeInfo
-                        ?.filterNotNull()
-                        ?.filter { it.cctv_ist_yn == "Y" } // 놀이터 안전점검 실시 여부가 'Y'인 경우만 필터링
-                        ?: emptyList()
-
-                    withContext(Dispatchers.Main) {
-                        _kindergartensWithCCTV.value = filteredAndSummarizedList // 필터링된 리스트 업데이트
-                        Log.d(TAG, "놀이터 cctv('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}")
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                        _kindergartensWithCCTV.value = emptyList()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
-                    _kindergartensWithCCTV.value = emptyList()
-                }
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+            _kindergartensWithCCTV.value = emptyList()
         }
     }
 
