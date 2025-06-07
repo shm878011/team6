@@ -8,14 +8,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.team6.uicomponents.BottomNavigationBar
 import com.example.team6.model.BottomNavRoute
-import com.example.team6.model.Nursery
-import com.example.team6.model.Routes
 import com.example.team6.model.UserInfo
 import com.example.team6.uicomponents.AccountInfoScreen
 import com.example.team6.uicomponents.FavoriteNurseriesScreen

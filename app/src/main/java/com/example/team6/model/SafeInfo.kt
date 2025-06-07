@@ -3,8 +3,6 @@ package com.example.team6.model
 import com.google.gson.annotations.SerializedName
 
 data class SafeInfo(
-    val key: String?,
-    val page: String?,
     val kindercode: String,
     val officeedu: String,
     val subofficeedu: String,

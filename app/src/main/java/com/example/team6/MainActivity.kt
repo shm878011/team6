@@ -37,9 +37,8 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        //ClickTest()
                         NavGraph(navController = navController)
-                        //HomeScreen()
+                        //ClickTest()
                         //GeocodingTestScreen()
                     }
                 }
