@@ -65,12 +65,6 @@ fun MainScreen(
             composable("account_info") {
                 AccountInfoScreen(
                     navController = navController,
-                    userInfo = UserInfo(
-                        name = "홍길동",
-                        username = "konkuk",
-                        email = "konkuk@gmail.com",
-                        passwordMasked = "************"
-                    ),
                     onLogout = onLogout
 
                 )
