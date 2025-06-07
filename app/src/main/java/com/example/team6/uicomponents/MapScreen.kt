@@ -53,13 +53,18 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     }
     val locationSource = rememberFusedLocationSource()
 
+    val trackingMode = remember { mutableStateOf(LocationTrackingMode.Follow) }
+
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
             cameraPositionState.move(
                 CameraUpdate.toCameraPosition(CameraPosition(it, 15.0))
             )
+            trackingMode.value = LocationTrackingMode.None // 🔽 수동 위치 설정 시, 자동 추적 해제
         }
     }
+
+
 
     Box(modifier = modifier.fillMaxSize()) {
         //지도
@@ -68,9 +73,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             cameraPositionState = cameraPositionState,
             locationSource = locationSource,
             properties = MapProperties(
-                locationTrackingMode = if (viewModel.currentLocation != null)
-                    LocationTrackingMode.Follow
-                else LocationTrackingMode.None
+                locationTrackingMode = trackingMode.value // 🔽 상태 기반으로 추적 모드 설정
             ),
             uiSettings = MapUiSettings(
                 isLocationButtonEnabled = viewModel.currentLocation != null // 위치 설정되면 네이버 버튼 보이게
@@ -123,6 +126,8 @@ fun MapScreen(viewModel: MainViewModel) {
     var showBottomSheet by remember { mutableStateOf(false) }
 
     val likedNurseries = viewModel.likedNurseries
+
+    val checklist by viewModel.checklist.collectAsState()
 
     // 💡 항상 UI를 보여줌
     Box(modifier = Modifier.fillMaxSize()) {
@@ -192,13 +197,34 @@ fun MapScreen(viewModel: MainViewModel) {
             FilterModal(
                 onClose = { showFilter = false },
                 onFilterApplied = { selectedDistance, selectedConditions ->
+                    val sido = "서울특별시"
+                    val sgg = "광진구"
+                    if("통학차량 여부" in selectedConditions)
+                    {
+                         viewModel.fetchKindergartensWithSchoolBus(sido, sgg)
+                    }
+                    else{
+                        viewModel.RemoveBus()
+                    }
+                    if("놀이터 여부" in selectedConditions)
+                    {
+                        viewModel.fetchKindergartensWithSafePlayground(sido, sgg)
+                    }
+                    else{
+                        viewModel.RemovePlayground()
+                    }
+                    if("CCTV 여부" in selectedConditions)
+                    {
+                        viewModel.fetchKindergartensWithSafeCCTV(sido, sgg)
+                    }
+                    else{
+                        viewModel.RemoveCCTV()
+                    }
+                    viewModel.updateChecklist()
                     filteredNurseries = dummyNurseries.filter { nursery ->
                         selectedConditions.all { cond ->
                             when (cond) {
                                 "입소 가능" -> nursery.current < nursery.capacity
-                                "통학차량 여부" -> nursery.hasBus == "Y"
-                                "놀이터 여부" -> nursery.playgroundCount > 0
-                                "주변 어린이 보호구역" -> true
                                 else -> true
                             }
                         }
@@ -223,13 +249,13 @@ fun MapScreen(viewModel: MainViewModel) {
 }
 
 
-    @Composable
+@Composable
 fun FilterModal(
     onClose: () -> Unit,
     onFilterApplied: (selectedDistance: String, selectedConditions: List<String>) -> Unit
 ) {
     val distances = listOf("500m", "1km", "3km", "5km", "10km")
-    val conditions = listOf("입소 가능", "통학차량 여부", "놀이터 여부", "주변 어린이 보호구역")
+    val conditions = listOf("입소 가능", "통학차량 여부", "놀이터 여부", "CCTV 여부")
 
     var selectedDistance by remember { mutableStateOf("1km") }
     val selectedConditions = remember { mutableStateListOf<String>() }
@@ -332,7 +358,7 @@ fun NurseryDetailCard(
             Spacer(modifier = Modifier.height(8.dp))
             Row {
                 Text("CCTV: ${nursery.cctvCount}", modifier = Modifier.weight(1f))
-                Text("놀이터: ${nursery.playgroundCount}", modifier = Modifier.weight(1f))
+                Text("놀이터: ${nursery.playground}", modifier = Modifier.weight(1f))
                 Text("보육실: ${nursery.roomCount}", modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))

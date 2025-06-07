@@ -1,4 +1,5 @@
 package com.example.team6.uicomponents
+import android.R.attr.text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,11 +41,14 @@ fun HomeScreen(
 fun KindergartenItem(kinderInfo: KinderInfo) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(text = "유치원명: ${kinderInfo.kindername}")
-        Text(text = "교육청: ${kinderInfo.officeedu}")
-        Text(text = "교육지원청: ${kinderInfo.subofficeedu}")
-        Text(text = "설립유형: ${kinderInfo.establish ?: "정보 없음"}")
-        Text(text = "시도코드: ${kinderInfo.sidoCode ?: "정보 없음"}")
-        Text(text = "시도코드: ${kinderInfo.sggCode ?: "정보 없음"}")
-        // 필요에 따라 더 많은 정보를 여기에 표시합니다.
+        Text(text = "주소: ${kinderInfo.addr}")
+        Text(text = "전화번호: ${kinderInfo.telno}")
+        Text(text = "홈페이지 주소: ${kinderInfo.hpaddr ?: "정보 없음"}")
+        Text(text = "운영시간: ${kinderInfo.opertime ?: "정보 없음"}")
+        Text(text = "원장명: ${kinderInfo.ldgrname ?: "정보 없음"}")
+        Text(text = "위도: ${kinderInfo.latitude }")
+        Text(text = "경도: ${kinderInfo.longitude }")
+        Text(text = "총원: ${kinderInfo.totalCapacity }")
+        Text(text = "현원: ${kinderInfo.current }")
     }
 }
