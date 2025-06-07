@@ -3,7 +3,9 @@ package com.example.team6.uicomponents
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -15,13 +17,22 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.team6.model.UserInfo
 import com.example.team6.viewmodel.AccountInfoViewModel
+import com.example.team6.viewmodel.FirebaseAuthViewModel
 
 @Composable
 fun AccountInfoScreen(
     navController: NavController,
-    userInfo: UserInfo,
+    viewModel: FirebaseAuthViewModel = viewModel(),
     onLogout: () -> Unit = {}
 ) {
+    val nickname by viewModel.nickname.collectAsState()
+
+    // 🔹 DB에서 닉네임 가져오기
+    LaunchedEffect(Unit) {
+        viewModel.fetchNicknameFromDatabase()
+    }
+    val userInfo = viewModel.getUserInfo()
+
     SubPage(title = "계정 정보", navController = navController) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text("회원 정보", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -53,20 +64,20 @@ fun AccountInfoScreen(
 
 
 
-@Preview(showBackground = true)
-@Composable
-private fun AccountInfoPreview() {
-    val sampleUser = UserInfo(
-        name = "홍길동",
-        username = "konkuk",
-        email = "konkuk@gmail.com",
-        passwordMasked = "************"
-    )
-
-    AccountInfoScreen(
-        navController = rememberNavController(),
-        userInfo = sampleUser,
-        onLogout = { /* no-op */ }
-    )
-}
+//@Preview(showBackground = true)
+//@Composable
+//private fun AccountInfoPreview() {
+//    val sampleUser = UserInfo(
+//        name = "홍길동",
+//        username = "konkuk",
+//        email = "konkuk@gmail.com",
+//        passwordMasked = "************"
+//    )
+//
+//    AccountInfoScreen(
+//        navController = rememberNavController(),
+//        userInfo = sampleUser,
+//        onLogout = { /* no-op */ }
+//    )
+//}
 
