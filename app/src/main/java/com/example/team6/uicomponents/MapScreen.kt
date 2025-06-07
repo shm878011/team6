@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,13 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.team6.R
+import com.example.team6.model.Click
+import com.example.team6.model.KinderInfo
 import com.example.team6.model.Nursery
-import com.example.team6.model.dummyNurseries
 import com.example.team6.viewmodel.MainViewModel
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.CameraPosition
@@ -47,6 +45,8 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val currentPosition = viewModel.currentLocation ?: defaultPosition
 
     val kindergartenList by viewModel.kindergartenList.collectAsState()
+
+
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition(currentPosition, 15.0)
@@ -127,7 +127,12 @@ fun MapScreen(viewModel: MainViewModel) {
 
     val likedNurseries = viewModel.likedNurseries
 
+    val kindergartenList by viewModel.kindergartenList.collectAsState()
     val checklist by viewModel.checklist.collectAsState()
+    var clicklist by remember { mutableStateOf<KinderInfo?>(null) }
+
+    val clickData by viewModel.clickdata.collectAsState()
+
 
     // 💡 항상 UI를 보여줌
     Box(modifier = Modifier.fillMaxSize()) {
@@ -151,10 +156,8 @@ fun MapScreen(viewModel: MainViewModel) {
                 value = query,
                 onValueChange = {
                     query = it
-                    filteredNurseries = dummyNurseries.filter { nursery ->
-                        nursery.name.contains(query, ignoreCase = true)
-                    }
-                    showBottomSheet = filteredNurseries.isNotEmpty()
+                    viewModel.Findlist(query)
+                    showBottomSheet = checklist.isNotEmpty()
                 },
                 placeholder = { Text("검색") },
                 modifier = Modifier
@@ -172,14 +175,14 @@ fun MapScreen(viewModel: MainViewModel) {
         }
 
         // 💡 조건부로 BottomSheet 띄우기
-        if (filteredNurseries.isNotEmpty() && showBottomSheet) {
+        if (checklist.isNotEmpty() && showBottomSheet) {
             BottomSheetScaffold(
                 scaffoldState = scaffoldState,
                 sheetContent = {
                     LazyColumn(modifier = Modifier.padding(16.dp)) {
-                        items(filteredNurseries) { nursery ->
-                            NurseryListItem(nursery = nursery, onClick = {
-                                selectedNursery = nursery
+                        items(checklist) { kinderinfo ->
+                            NurseryListItem(kinderinfo = kinderinfo, onClick = {
+                                clicklist = kinderinfo
                                 scope.launch {
                                     scaffoldState.bottomSheetState.partialExpand()
                                 }
@@ -199,6 +202,7 @@ fun MapScreen(viewModel: MainViewModel) {
                 onFilterApplied = { selectedDistance, selectedConditions ->
                     val sido = "서울특별시"
                     val sgg = "광진구"
+                    viewModel.fetchKindergartenData(sido, sgg)
                     if("통학차량 여부" in selectedConditions)
                     {
                          viewModel.fetchKindergartensWithSchoolBus(sido, sgg)
@@ -220,25 +224,37 @@ fun MapScreen(viewModel: MainViewModel) {
                     else{
                         viewModel.RemoveCCTV()
                     }
-                    viewModel.updateChecklist()
-                    filteredNurseries = dummyNurseries.filter { nursery ->
-                        selectedConditions.all { cond ->
-                            when (cond) {
-                                "입소 가능" -> nursery.current < nursery.capacity
-                                else -> true
-                            }
-                        }
+                    if("입소 가능" in selectedConditions)
+                    {
+                        viewModel.Canadmission(true)
                     }
-                    showBottomSheet = filteredNurseries.isNotEmpty()
+                    else{
+                        viewModel.Canadmission(false)
+                    }
+                    viewModel.updateChecklist()
+                    showBottomSheet = checklist.isNotEmpty()
                     showFilter = false
                 }
             )
         }
 
         // 상세 정보 카드
-        selectedNursery?.let {
+        clicklist?.let {
+            val sidoSggCodeMap = viewModel.nameToMapCode
+            var sido = ""
+            var sgg = ""
+            for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                if (clicklist!!.addr.contains(sidoCandidate) && clicklist!!.addr.contains(sggCandidate)) {
+                    sido = sidoCandidate
+                    sgg = sggCandidate
+                    break
+                }
+            }
+            LaunchedEffect(sido, sgg, clicklist!!.kindername) {
+                viewModel.populateClickData(sido, sgg, clicklist!!.kindername)
+            }
             NurseryDetailCard(
-                nursery = it,
+                nursery = clickData,
                 isLiked = viewModel.isLiked(it),
                 onLikeToggle = { viewModel.toggleLike(it) },
                 onReviewClick = { /* TODO */ },
@@ -313,7 +329,7 @@ fun FilterModal(
 
 
 @Composable
-fun NurseryListItem(nursery: Nursery, onClick: () -> Unit) {
+fun NurseryListItem(kinderinfo: KinderInfo, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -322,16 +338,16 @@ fun NurseryListItem(nursery: Nursery, onClick: () -> Unit) {
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(nursery.name, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text("⭐ ${nursery.rating}")
-            Text(nursery.address, fontSize = 13.sp, color = Color.Gray)
+            Text(kinderinfo.kindername, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            //Text("⭐ ${nursery.rating}")
+            Text(kinderinfo.addr, fontSize = 13.sp, color = Color.Gray)
         }
     }
 }
 
 @Composable
 fun NurseryDetailCard(
-    nursery: Nursery,
+    nursery: Click,
     isLiked: Boolean,
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
@@ -352,30 +368,30 @@ fun NurseryDetailCard(
                     modifier = Modifier.clickable { onLikeToggle() }
                 )
             }
-            Text("⭐ ${nursery.rating}   ", fontSize = 14.sp)
+            //Text("⭐ ${nursery.rating}   ", fontSize = 14.sp)
             Text(nursery.address)
-            Text(nursery.phone)
+            Text(nursery.phone.toString())
             Spacer(modifier = Modifier.height(8.dp))
             Row {
-                Text("CCTV: ${nursery.cctvCount}", modifier = Modifier.weight(1f))
-                Text("놀이터: ${nursery.playground}", modifier = Modifier.weight(1f))
+                Text("CCTV: ${nursery.cctv_ist_total}", modifier = Modifier.weight(1f))
+                Text("놀이터: ${nursery.plyg_ck_yn}", modifier = Modifier.weight(1f))
                 Text("보육실: ${nursery.roomCount}", modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "정원/현원: ${nursery.capacity}/${nursery.current}",
+                    "정원/현원: ${nursery.totalCapacity}/${nursery.current}",
                     modifier = Modifier.weight(1f)
                 )
                 Text("교직원 수: ${nursery.staffCount}", modifier = Modifier.weight(1f))
-                Text("통학차량: ${nursery.hasBus}", modifier = Modifier.weight(1f))
+                Text("통학차량: ${nursery.vhcl_oprn_yn}", modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "리뷰 ${nursery.reviewCount}",
-                color = Color.Blue,
-                modifier = Modifier.clickable { onReviewClick() }
-            )
+//            Text(
+//                text = "리뷰 ${nursery.reviewCount}",
+//                color = Color.Blue,
+//                modifier = Modifier.clickable { onReviewClick() }
+//            )
         }
     }
 }

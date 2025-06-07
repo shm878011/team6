@@ -2,20 +2,17 @@ package com.example.team6.viewmodel
 
 import android.app.Application
 import android.util.Log
-import android.util.Log.e
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.team6.model.BasicInfo
 import com.example.team6.model.Click
-import com.example.team6.model.KindergartenResponse // KindergartenResponse는 계속 사용
 import com.example.team6.model.KinderInfo // KinderInfo 사용
 import com.example.team6.model.SchoolBusInfo // SchoolBusInfo 사용
-import com.example.team6.model.Nursery
 import com.example.team6.model.SafeInfo
-import com.example.team6.model.*
 import com.example.team6.network.KindergartenApiService
 import com.example.team6.network.RetrofitClient
 import com.naver.maps.geometry.LatLng
@@ -24,7 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import kotlinx.coroutines.delay
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import java.io.InputStream
 import kotlinx.coroutines.*
@@ -34,13 +30,16 @@ import org.apache.poi.ss.usermodel.CellType
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.nio.charset.Charset
+import java.nio.file.WatchEvent
 import kotlin.collections.List
+import kotlin.collections.filter
+
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    val likedNurseries = mutableStateListOf<Nursery>()
+    val likedNurseries = mutableStateListOf<KinderInfo>()
 
-    fun toggleLike(nursery: Nursery) {
+    fun toggleLike(nursery: KinderInfo) {
         if (likedNurseries.contains(nursery)) {
             likedNurseries.remove(nursery)
         } else {
@@ -48,7 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun isLiked(nursery: Nursery): Boolean {
+    fun isLiked(nursery: KinderInfo): Boolean {
         return likedNurseries.contains(nursery)
     }
 
@@ -123,6 +122,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _kindergartensWithCCTV = MutableStateFlow<List<SafeInfo>>(emptyList())
     val kindergartensWithCCTV: StateFlow<List<SafeInfo>> = _kindergartensWithCCTV
 
+    private var _kindergartenBasicList = MutableStateFlow<List<BasicInfo>>(emptyList())
+
+    private var _Canadmission = false
 
     private val _checklist = MutableStateFlow<List<KinderInfo>>(emptyList())
     val checklist: StateFlow<List<KinderInfo>> = _checklist
@@ -167,7 +169,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         kindergartenApiService = retrofit.create(KindergartenApiService::class.java)
 
         loadSidoSggCodesFromExcel()
-        fetchAllKindergartenData() // 앱 시작 시 CSV 데이터 로드
+        fetchAllKindergartenData()
     }
 
     private fun loadSidoSggCodesFromExcel() {
@@ -281,17 +283,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun fetchKindergartenData(sidoCode: String, sggCode: String) {
+    fun fetchKindergartenData(sidoName: String, sggName: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            val codes = getSidoSggCodesByName(sidoName, sggName)
+            if (codes == null) {
+                Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
+                withContext(Dispatchers.Main) {
+                    _schoolBusKindergartens.value = emptyList()
+                }
+                return@launch
+            }
+
+            val (sidoCode, sggCode) = codes
             try {
-                // 이 함수는 KindergartenResponse를 반환하도록 KindergartenApiService에 정의되어 있다고 가정
                 val response = kindergartenApiService.getKindergartenBasicInfo(YOUR_API_KEY, sidoCode, sggCode)
 
                 if (response.status == "SUCCESS") {
                     withContext(Dispatchers.Main) {
                         Log.d(TAG, "API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${response.kinderInfo?.size ?: 0}")
-                        // 이 함수는 _kindergartenList를 직접 업데이트하지 않음 (CSV 로드가 주 데이터 소스)
-                    }
+                        _kindergartenBasicList.value = response.kinderInfo                    }
                 } else {
                     withContext(Dispatchers.Main) {
                         Log.e(TAG, "API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
@@ -354,39 +364,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateChecklist() {
         viewModelScope.launch {
+            Log.d(TAG, "시작")
             var newChecklist: List<KinderInfo> = kindergartenList.value
-            if (newChecklist.isNotEmpty() && schoolBusKindergartens.value.isNotEmpty()) {
-                val schoolBusNames = schoolBusKindergartens.value.map { it.kindername }.toSet()
-                newChecklist = newChecklist.filter { kinderInfo ->
-                    kinderInfo.kindername in schoolBusNames
+            var changelist: List<BasicInfo> = _kindergartenBasicList.value
+
+            if (changelist.isNotEmpty() && schoolBusKindergartens.value.isNotEmpty()) {
+                val schoolBusNames = schoolBusKindergartens.value.map { Pair(it.kindercode, it.kindername) }.toSet()
+                changelist = changelist.filter { kinderInfo ->
+                    Pair(kinderInfo.kinderCode, kinderInfo.kindername) in schoolBusNames
                 }
-                Log.d(TAG, "Checklist 업데이트 (모드: 통학버스): ${newChecklist.size}개 유치원 매칭.")
+                Log.d(TAG, "Checklist 업데이트 (모드: 통학버스): ${changelist.size}개 유치원 매칭.")
             } else {
                 Log.d(TAG, "Checklist 업데이트(통학버스): 원본 리스트 중 하나 이상이 비어있음.")
             }
-            if (newChecklist.isNotEmpty() && kindergartensWithSafePlayground.value.isNotEmpty()) {
+            if (changelist.isNotEmpty() && kindergartensWithSafePlayground.value.isNotEmpty()) {
                 val safePlaygroundKinderNames = kindergartensWithSafePlayground.value
                     .filter { it.plyg_ck_yn == "Y" }
-                    .map { it.kindername }
+                    .map { Pair(it.kindercode, it.kindername) }
                     .toSet()
-                newChecklist = newChecklist.filter { kinderInfo ->
-                    kinderInfo.kindername in safePlaygroundKinderNames
+                changelist = changelist.filter { kinderInfo ->
+                    Pair(kinderInfo.kinderCode, kinderInfo.kindername) in safePlaygroundKinderNames
                 }
-                Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${newChecklist.size}개 유치원 매칭.")
+                Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${changelist.size}개 유치원 매칭.")
             } else {
                 Log.d(TAG, "Checklist 업데이트(놀이터 안전): 원본 리스트 중 하나 이상이 비어있음.")
             }
-            if (newChecklist.isNotEmpty() && _kindergartensWithCCTV.value.isNotEmpty()) {
+            if (changelist.isNotEmpty() && _kindergartensWithCCTV.value.isNotEmpty()) {
                 val CCTVKinderNames = _kindergartensWithCCTV.value
                     .filter { it.cctv_ist_yn == "Y" }
-                    .map { it.kindername }
+                    .map { Pair(it.kindercode, it.kindername) }
                     .toSet()
-                newChecklist = newChecklist.filter { kinderInfo ->
-                    kinderInfo.kindername in CCTVKinderNames
+                changelist = changelist.filter { kinderInfo ->
+                    Pair(kinderInfo.kinderCode, kinderInfo.kindername) in CCTVKinderNames
                 }
-                Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${newChecklist.size}개 유치원 매칭.")
+                Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${changelist.size}개 유치원 매칭.")
             } else {
                 Log.d(TAG, "Checklist 업데이트(놀이터 안전): 원본 리스트 중 하나 이상이 비어있음.")
+            }
+            if (changelist.isNotEmpty()){
+                val CHANGE = changelist.map { Pair(it.kindername, it.addr) }.toSet()
+                newChecklist = newChecklist.filter { kinderInfo ->
+                    Pair(kinderInfo.kindername, kinderInfo.addr) in CHANGE
+                }
+            }
+
+            if(newChecklist.isNotEmpty() && _Canadmission){
+                newChecklist = newChecklist.filter { KinderInfo->
+                    KinderInfo.totalCapacity > KinderInfo.current
+                }
             }
             _checklist.value = newChecklist
             Log.d(TAG, "최종 Checklist 업데이트 완료: ${newChecklist.size}개 유치원.")
@@ -618,5 +643,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-}
+    fun Findlist(value: String){
+        _checklist.value = _kindergartenList.value.filter {
+            it.kindername.contains(value, ignoreCase = true)
+        }
+    }
+
+    fun Canadmission(bool: Boolean) {
+        _Canadmission = bool
+    }
 }

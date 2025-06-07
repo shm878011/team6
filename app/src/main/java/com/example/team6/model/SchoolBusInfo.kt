@@ -1,7 +1,6 @@
 package com.example.team6.model
 
 data class SchoolBusInfo(
-    val key: String,
     val kindercode: String,
     val officeedu: String,
     val subofficeedu: String,
@@ -14,5 +13,4 @@ data class SchoolBusInfo(
     val psg12_dclr_vhcnt: String?,
     val psg15_dclr_vhcnt: String?,
     val pbnttmng: String?,
-    val page: String?
 )
