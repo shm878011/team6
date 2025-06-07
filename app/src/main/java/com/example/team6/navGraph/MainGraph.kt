@@ -3,6 +3,9 @@ package com.example.team6.navGraph
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -21,6 +24,7 @@ import com.example.team6.uicomponents.InfoScreen
 import com.example.team6.uicomponents.recommend.QuestionScreen
 import com.example.team6.uicomponents.recommend.RecommendScreen
 import com.example.team6.uicomponents.recommend.ResultScreen
+import com.example.team6.viewmodel.FirebaseAuthViewModel
 import com.example.team6.viewmodel.MainViewModel
 
 
@@ -31,6 +35,12 @@ fun MainScreen(
 ){
     val navController = rememberNavController()
     val viewModel: MainViewModel = viewModel()
+    val authViewModel: FirebaseAuthViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        authViewModel.checkLoginStatus()
+    }
+
     //val likedNurseries = remember { mutableStateListOf<Nursery>() }
 
 
@@ -60,12 +70,7 @@ fun MainScreen(
             composable("account_info") {
                 AccountInfoScreen(
                     navController = navController,
-                    userInfo = UserInfo(
-                        name = "홍길동",
-                        username = "konkuk",
-                        email = "konkuk@gmail.com",
-                        passwordMasked = "************"
-                    ),
+                    viewModel = authViewModel,
                     onLogout = onLogout
 
                 )

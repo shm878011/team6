@@ -10,6 +10,9 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,11 +22,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.team6.viewmodel.FirebaseAuthViewModel
 
 @Composable
-fun MyPageScreen(navController: NavController) {
+fun MyPageScreen(navController: NavController,
+                 viewModel: FirebaseAuthViewModel = viewModel()
+) {
+    val nickname by viewModel.nickname.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchNicknameFromDatabase()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -48,8 +61,8 @@ fun MyPageScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("홍길동", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text("홍길동님, 오늘도 반가워요!", fontSize = 14.sp, color = Color.Gray)
+        Text(nickname.ifBlank { "사용자" }, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("${nickname}님, 오늘도 반가워요!", fontSize = 14.sp, color = Color.Gray)
 
         Spacer(modifier = Modifier.height(32.dp))
 

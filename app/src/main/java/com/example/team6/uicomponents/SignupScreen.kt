@@ -14,17 +14,35 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.team6.viewmodel.FirebaseAuthViewModel
 
 
 @Composable
-fun SignupScreen(onBackToLogin : () -> Unit) {
-    Column (
+fun SignupScreen(
+    onBackToLogin: () -> Unit,
+    viewModel: FirebaseAuthViewModel = viewModel()
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var nickname by remember { mutableStateOf("") }
+
+    val result by viewModel.authResult.collectAsState()
+    var localMessage by remember { mutableStateOf<String?>(null) }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
@@ -34,16 +52,26 @@ fun SignupScreen(onBackToLogin : () -> Unit) {
         Text("애지중지", fontSize = 28.sp, color = Color(0xFFFFC107))
 
         Spacer(modifier = Modifier.height(32.dp))
-        OutlinedTextField(value = "", onValueChange = {}, label = { Text("아이디") })
+
+        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("아이디") }) // 이메일
         Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = "", onValueChange = {}, label = { Text("비밀번호") })
+        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("비밀번호") })
         Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = "", onValueChange = {}, label = { Text("비밀번호 확인") })
+        OutlinedTextField(value = confirmPassword, onValueChange = { confirmPassword = it }, label = { Text("비밀번호 확인") })
         Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = "", onValueChange = {}, label = { Text("닉네임") })
+        OutlinedTextField(value = nickname, onValueChange = { nickname = it }, label = { Text("닉네임") })
 
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = {/* 회원가입 로직 */},
+        Button(
+            onClick = {
+                if (password != confirmPassword) {
+                    localMessage = "비밀번호가 일치하지 않습니다."
+                } else if (email.isBlank() || password.isBlank()) {
+                    localMessage = "아이디와 비밀번호를 입력해주세요."
+                } else {
+                    viewModel.signup(email, password, nickname)
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -52,13 +80,23 @@ fun SignupScreen(onBackToLogin : () -> Unit) {
         ) {
             Text("회원가입", color = Color.Black)
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        (result ?: localMessage)?.let {
+            Text(
+                text = it,
+                color = if (it.contains("성공")) Color.Blue else Color.Red,
+                fontSize = 14.sp
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         Text("이미 계정이 있으신가요?", fontSize = 14.sp)
         TextButton(onClick = onBackToLogin) {
             Text("로그인")
         }
     }
-
 }
 
 @Preview(showBackground = true, name = "Signup Preview")
