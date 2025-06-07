@@ -1,5 +1,6 @@
 package com.example.team6
 
+import ClickTest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import com.example.team6.model.Click
 import com.example.team6.navGraph.NavGraph
 import com.example.team6.network.GeocodingTestScreen
 import com.example.team6.ui.theme.Team6Theme
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color = MaterialTheme.colorScheme.background
                     ) {
+                        //ClickTest()
                         NavGraph(navController = navController)
                         //HomeScreen()
                         //GeocodingTestScreen()
