@@ -53,7 +53,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     }
     val locationSource = rememberFusedLocationSource()
 
-    val trackingMode = remember { mutableStateOf(LocationTrackingMode.Follow) }
+    val trackingMode = remember { mutableStateOf(LocationTrackingMode.None) }
 
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
@@ -76,7 +76,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 locationTrackingMode = trackingMode.value // 🔽 상태 기반으로 추적 모드 설정
             ),
             uiSettings = MapUiSettings(
-                isLocationButtonEnabled = viewModel.currentLocation != null // 위치 설정되면 네이버 버튼 보이게
+                isLocationButtonEnabled = false
             )
         ) {
             //현재 위치 설정 전 → 건국대 마커 표시
@@ -88,13 +88,11 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             }
         }
 
-        // 커스텀 내 위치 버튼 (초기 상태에서만 보여짐)
-        if (viewModel.currentLocation == null) {
+        // 커스텀 내 위치 버튼
             IconButton(
                 onClick = {
-                    cameraPositionState.move(
-                        CameraUpdate.toCameraPosition(CameraPosition(defaultPosition, 15.0))
-                    )
+                    val targetPosition = viewModel.currentLocation ?: defaultPosition
+                    cameraPositionState.move(CameraUpdate.toCameraPosition(CameraPosition(targetPosition, 15.0)))
                 },
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -109,7 +107,6 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 )
             }
         }
-    }
 }
 
 
