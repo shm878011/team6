@@ -106,6 +106,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val _clicklist = MutableStateFlow<KinderInfo?>(null)
+    val clicklist: StateFlow<KinderInfo?> = _clicklist
+
+    fun setClickList(info: KinderInfo) {
+        _clicklist.value = info
+    }
+
+    fun clearClickList() {
+        _clicklist.value = null
+    }
+
     private val TAG = "MainViewModelAPI"
     private val BASE_URL = "https://e-childschoolinfo.moe.go.kr/"
     private val YOUR_API_KEY = "cf749df1e1224d0c80be9efc008279ad"
