@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
@@ -36,6 +37,7 @@ import com.naver.maps.map.compose.NaverMap
 import com.naver.maps.map.compose.rememberCameraPositionState
 import com.naver.maps.map.compose.rememberFusedLocationSource
 import com.naver.maps.map.compose.rememberMarkerState
+import com.naver.maps.map.overlay.OverlayImage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -57,12 +59,15 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
     val trackingMode = remember { mutableStateOf(LocationTrackingMode.None) }
 
+    val checklist by viewModel.checklist.collectAsState()
+
+
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
             cameraPositionState.move(
                 CameraUpdate.toCameraPosition(CameraPosition(it, 15.0))
             )
-            trackingMode.value = LocationTrackingMode.None // 🔽 수동 위치 설정 시, 자동 추적 해제
+            trackingMode.value = LocationTrackingMode.None // 수동 위치 설정 시, 자동 추적 해제
         }
     }
 
@@ -75,7 +80,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             cameraPositionState = cameraPositionState,
             locationSource = locationSource,
             properties = MapProperties(
-                locationTrackingMode = trackingMode.value // 🔽 상태 기반으로 추적 모드 설정
+                locationTrackingMode = trackingMode.value // 상태 기반으로 추적 모드 설정
             ),
             uiSettings = MapUiSettings(
                 isLocationButtonEnabled = false
@@ -88,7 +93,38 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     captionText = "건국대학교"
                 )
             }
+
+            // 필터링된 유치원들 마커로 표시
+            checklist.forEach { kindergarten ->
+                if (kindergarten.latitude != 0.0 && kindergarten.longitude != 0.0) {
+                    Marker(
+                        state = rememberMarkerState(position = LatLng(kindergarten.latitude!!, kindergarten.longitude!!)),
+                        captionText = kindergarten.kindername,
+                        icon = OverlayImage.fromResource(R.drawable.marker),
+                        width = 48.dp,
+                        height = 48.dp,
+                        onClick = {
+                            // 주소 기반으로 시도/시군구 이름 추출
+                            val sidoSggCodeMap = viewModel.nameToMapCode
+                            var sido = ""
+                            var sgg = ""
+                            for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                                if (kindergarten.addr.contains(sidoCandidate) && kindergarten.addr.contains(sggCandidate)) {
+                                    sido = sidoCandidate
+                                    sgg = sggCandidate
+                                    break
+                                }
+                            }
+
+                            viewModel.populateClickData(sido, sgg, kindergarten.kindername)
+                            viewModel.setClickList(kindergarten)
+                            true // 클릭 이벤트 소비
+                        }
+                    )
+                }
+            }
         }
+
 
         // 커스텀 내 위치 버튼
             IconButton(
@@ -128,8 +164,8 @@ fun MapScreen(viewModel: MainViewModel) {
 
     val kindergartenList by viewModel.kindergartenList.collectAsState()
     val checklist by viewModel.checklist.collectAsState()
-    var clicklist by remember { mutableStateOf<KinderInfo?>(null) }
-
+    //var clicklist by remember { mutableStateOf<KinderInfo?>(null) }
+    val clicklist by viewModel.clicklist.collectAsState()
     val clickData by viewModel.clickdata.collectAsState()
 
 
@@ -181,7 +217,8 @@ fun MapScreen(viewModel: MainViewModel) {
                     LazyColumn(modifier = Modifier.padding(16.dp)) {
                         items(checklist) { kinderinfo ->
                             NurseryListItem(kinderinfo = kinderinfo, onClick = {
-                                clicklist = kinderinfo
+                                //clicklist = kinderinfo
+                                viewModel.setClickList(kinderinfo)
                                 scope.launch {
                                     scaffoldState.bottomSheetState.partialExpand()
                                 }
@@ -267,6 +304,7 @@ fun MapScreen(viewModel: MainViewModel) {
                 isLiked = viewModel.isLiked(it),
                 onLikeToggle = { viewModel.toggleLike(it) },
                 onReviewClick = { /* TODO */ },
+                onClose = { viewModel.clearClickList() },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -360,7 +398,9 @@ fun NurseryDetailCard(
     isLiked: Boolean,
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClose: () -> Unit
+
 ) {
     Card(
         modifier = modifier.padding(16.dp),
@@ -370,6 +410,9 @@ fun NurseryDetailCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(nursery.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
+                IconButton(onClick = onClose) { //닫기버튼
+                    Icon(Icons.Default.Close, contentDescription = "닫기")
+                }
                 Icon(
                     imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = "찜",
