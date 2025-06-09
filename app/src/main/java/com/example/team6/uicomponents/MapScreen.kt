@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,6 +63,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val checklist by viewModel.checklist.collectAsState()
 
 
+
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
             cameraPositionState.move(
@@ -100,7 +102,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     Marker(
                         state = rememberMarkerState(position = LatLng(kindergarten.latitude!!, kindergarten.longitude!!)),
                         captionText = kindergarten.kindername,
-                        icon = OverlayImage.fromResource(R.drawable.marker),
+                        icon = OverlayImage.fromResource(R.drawable.marker2),
                         width = 48.dp,
                         height = 48.dp,
                         onClick = {
@@ -118,10 +120,21 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
                             viewModel.populateClickData(sido, sgg, kindergarten.kindername)
                             viewModel.setClickList(kindergarten)
+                            viewModel.updateNearbyZones(kindergarten.latitude!!, kindergarten.longitude!!)
                             true // 클릭 이벤트 소비
                         }
                     )
                 }
+            }
+            val schoolZones by viewModel.nearbyZones.collectAsState()
+            schoolZones.forEach {
+                Marker(
+                    state = rememberMarkerState(position = LatLng(it.latitude, it.longitude)),
+                    icon = OverlayImage.fromResource(R.drawable.school_zone),
+                    width = 24.dp,
+                    height = 24.dp,
+                    captionText = "보호구역"
+                )
             }
         }
 
@@ -167,6 +180,13 @@ fun MapScreen(viewModel: MainViewModel) {
     //var clicklist by remember { mutableStateOf<KinderInfo?>(null) }
     val clicklist by viewModel.clicklist.collectAsState()
     val clickData by viewModel.clickdata.collectAsState()
+
+    val context = LocalContext.current
+
+    // 최초 진입 시 한 번만 CSV 로드
+    LaunchedEffect(Unit) {
+        viewModel.loadSchoolZones(context)
+    }
 
 
     // 💡 항상 UI를 보여줌
