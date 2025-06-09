@@ -1,6 +1,7 @@
 package com.example.team6.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -33,6 +34,11 @@ import java.nio.charset.Charset
 import java.nio.file.WatchEvent
 import kotlin.collections.List
 import kotlin.collections.filter
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -115,6 +121,62 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearClickList() {
         _clicklist.value = null
+    }
+
+    data class SchoolZone(val latitude: Double, val longitude: Double)
+
+    private val _schoolZones = mutableStateListOf<SchoolZone>()
+    val schoolZones: List<SchoolZone> get() = _schoolZones
+    // 마커 클릭 후 300m 이내 보호구역 필터링 결과 저장용
+    private val _nearbyZones = MutableStateFlow<List<SchoolZone>>(emptyList())
+    val nearbyZones: StateFlow<List<SchoolZone>> = _nearbyZones
+
+    fun updateNearbyZones(centerLat: Double, centerLng: Double) {
+        viewModelScope.launch(Dispatchers.Default) {
+            val filtered = _schoolZones.filter {
+                haversine(it.latitude, it.longitude, centerLat, centerLng) <= 2
+            }
+            _nearbyZones.value = filtered
+
+            Log.d("NearbyZones", "유치원 기준 반경 2000m 내 보호구역: ${filtered.size}개") //
+        }
+    }
+
+    private fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371000.0 // 지구 반지름 (m)
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2).pow(2.0) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2).pow(2.0)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
+    }
+
+    // CSV 로드 함수
+    fun loadSchoolZones(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val inputStream = context.assets.open("school_zone.csv")
+                val reader = BufferedReader(InputStreamReader(inputStream)) // UTF-8 기본 사용
+
+                reader.useLines { lines ->
+                    lines.drop(1).forEach { line ->
+                        val tokens = line.split(",")
+                        val lat = tokens.getOrNull(4)?.toDoubleOrNull()
+                        val lng = tokens.getOrNull(5)?.toDoubleOrNull()
+                        if (lat != null && lng != null) {
+                            _schoolZones.add(SchoolZone(lat, lng))
+                        }
+                    }
+                }
+
+                Log.d("SchoolZone", " 어린이보호구역 로드 완료: ${_schoolZones.size}개")
+
+            } catch (e: Exception) {
+                Log.e("SchoolZone", " CSV 파싱 실패: ${e.message}")
+            }
+        }
     }
 
     private val TAG = "MainViewModelAPI"
