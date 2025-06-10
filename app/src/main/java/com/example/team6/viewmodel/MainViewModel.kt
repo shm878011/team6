@@ -1,6 +1,7 @@
 package com.example.team6.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -30,12 +31,27 @@ import org.apache.poi.ss.usermodel.CellType
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.nio.charset.Charset
-import java.nio.file.WatchEvent
 import kotlin.collections.List
 import kotlin.collections.filter
+import android.location.Location
 
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val sharedPrefs = application.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+    private val LAST_KNOWN_ADDRESS_KEY = "last_known_address"
+    private val RANGE_LOCATION_KEY = "range_location"
+
+    var Rangelocation: Double by mutableStateOf(sharedPrefs.getFloat(RANGE_LOCATION_KEY, 2.0f).toDouble())
+        private set
+
+    fun updateRangelocation(newValue: Double) {
+        Rangelocation = newValue
+        with(sharedPrefs.edit()) {
+            putFloat(RANGE_LOCATION_KEY, newValue.toFloat())
+            apply()
+        }
+    }
 
     val likedNurseries = mutableStateListOf<KinderInfo>()
 
@@ -50,6 +66,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun isLiked(nursery: KinderInfo): Boolean {
         return likedNurseries.contains(nursery)
     }
+    private val CURRENT_LOCATION_LAT_KEY = "current_location_latitude"
+    private val CURRENT_LOCATION_LNG_KEY = "current_location_longitude"
+    private val DEFAULT_LATITUDE = 37.5408
+    private val DEFAULT_LONGITUDE = 127.0793
 
     var currentLocation by mutableStateOf<LatLng?>(null)
         private set
@@ -59,6 +79,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateLocation(latLng: LatLng) {
         currentLocation = latLng
+        with(sharedPrefs.edit()) {
+            putFloat(CURRENT_LOCATION_LAT_KEY, latLng.latitude.toFloat())
+            putFloat(CURRENT_LOCATION_LNG_KEY, latLng.longitude.toFloat())
+            apply()
+        }
         fetchAddressFromCoords(latLng)
     }
 
@@ -152,9 +177,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val nameToMapCode: Map<Pair<String, String>, Pair<String, String>>
         get() = nameToCodeMap
 
+
+
     init {
         val logging = HttpLoggingInterceptor()
         logging.setLevel(HttpLoggingInterceptor.Level.BODY)
+        val savedLat = sharedPrefs.getFloat(CURRENT_LOCATION_LAT_KEY, DEFAULT_LATITUDE.toFloat()).toDouble()
+        val savedLng = sharedPrefs.getFloat(CURRENT_LOCATION_LNG_KEY, DEFAULT_LONGITUDE.toFloat()).toDouble()
+        currentLocation = LatLng(savedLat, savedLng)
+
 
         val client = OkHttpClient.Builder()
             .addInterceptor(logging)
@@ -398,6 +429,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     KinderInfo.totalCapacity > KinderInfo.current
                 }
             }
+
+            if(newChecklist.isNotEmpty()){
+                currentLocation?.let { userLocation ->
+                    val rangeInMeters = Rangelocation * 1000
+                    newChecklist = newChecklist.filter { kinderInfo ->
+                        val results = FloatArray(1)
+                        Location.distanceBetween(
+                            userLocation.latitude,
+                            userLocation.longitude,
+                            kinderInfo.latitude ?: 0.0,
+                            kinderInfo.longitude ?: 0.0,
+                            results
+                        )
+                        val distanceInMeters = results[0]
+                        distanceInMeters <= rangeInMeters
+                    }
+                    Log.d(TAG, "Checklist 업데이트 (거리 필터링 ${Rangelocation}km 이내): ${newChecklist.size}개 유치원 매칭.")
+                } ?: run {
+                    Log.d(TAG, "Checklist 업데이트(거리 필터링): currentLocation이 null이므로 거리 필터링을 건너뜁니다.")
+                }
+            }
+
             _checklist.value = newChecklist
             Log.d(TAG, "최종 Checklist 업데이트 완료: ${newChecklist.size}개 유치원.")
         }
@@ -491,7 +544,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             val (sidoCode, sggCode) = codes
 
-            val basicKinderInfo = _kindergartenList.value.firstOrNull { it.kindername == kindername }
+            val basicKinderInfo = _kindergartenList.value.firstOrNull { kinderInfo ->
+                kinderInfo.kindername == kindername &&
+                        kinderInfo.addr.contains(sidoName) && // 주소에 sidoName 포함 여부 확인
+                        kinderInfo.addr.contains(sggName)     // 주소에 sggName 포함 여부 확인
+            }
 
             var clickName = basicKinderInfo?.kindername ?: kindername
             var clickAddress = basicKinderInfo?.addr ?: "주소 정보 없음"
@@ -617,4 +674,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun Canadmission(bool: Boolean) {
         _Canadmission = bool
     }
+
+    fun changedistance(selectedDistance: String) {
+        if(selectedDistance == "1km"){
+            updateRangelocation(1.0)
+        }
+        else if(selectedDistance == "2km"){
+            updateRangelocation(2.0)
+        }
+        else if(selectedDistance == "4km"){
+            updateRangelocation(4.0)
+        }
+        else if(selectedDistance == "10km"){
+            updateRangelocation(10.0)
+        }
+    }
+
 }

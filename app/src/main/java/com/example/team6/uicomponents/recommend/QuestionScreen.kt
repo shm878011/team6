@@ -1,5 +1,7 @@
 package com.example.team6.uicomponents.recommend
 
+import android.R.attr.label
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -10,16 +12,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.team6.model.Routes
 
 @Composable
 fun QuestionScreen(navController: NavHostController) {
-    val steps = 4
+    val steps = 5
     var currentStep by remember { mutableStateOf(0) }
 
     var age by remember { mutableStateOf("") }
     var importantPoint by remember { mutableStateOf("") }
     var guardianAvailable by remember { mutableStateOf("") }
     var active by remember { mutableStateOf("") }
+    var nowadmission by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -48,20 +52,20 @@ fun QuestionScreen(navController: NavHostController) {
             }
 
             1 -> {
-                Text("2. 가장 중요한 것은 무엇인가요?")
+                Text("2. 안전을 다른 요소보다 중요하게 보나요??")
                 Spacer(modifier = Modifier.height(8.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("안전한 환경 (CCTV)", "거리", "리뷰 많은 곳").forEach { label ->
-                        val isSelected = importantPoint == label
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    listOf("네", "아니요").forEach { answer ->
+                        val isSelected = importantPoint == answer
                         Button(
-                            onClick = { importantPoint = label },
+                            onClick = { importantPoint = answer },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         ) {
-                            Text(label)
+                            Text(answer)
                         }
                     }
                 }
@@ -104,6 +108,25 @@ fun QuestionScreen(navController: NavHostController) {
                     }
                 }
             }
+
+            4 -> {
+                Text("5. 지금 입학이 가능해야 하나요?")
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    listOf("네", "아니요").forEach { answer ->
+                        val isSelected = nowadmission == answer
+                        Button(
+                            onClick = { nowadmission = answer },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(answer)
+                        }
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -113,6 +136,7 @@ fun QuestionScreen(navController: NavHostController) {
             1 -> importantPoint.isNotBlank()
             2 -> guardianAvailable.isNotBlank()
             3 -> active.isNotBlank()
+            4 -> nowadmission.isNotBlank()
             else -> false
         }
 
@@ -121,7 +145,9 @@ fun QuestionScreen(navController: NavHostController) {
                 if (currentStep < steps - 1) {
                     currentStep++
                 } else {
-                    navController.navigate("result") {
+                    navController.navigate(
+                        Routes.ResultWithArgs.createRoute(age, importantPoint, guardianAvailable, active, nowadmission)
+                    ) {
                         popUpTo("recommend") { inclusive = false }
                     }
                 }

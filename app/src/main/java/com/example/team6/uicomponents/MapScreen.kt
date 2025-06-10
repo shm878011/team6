@@ -1,5 +1,6 @@
 package com.example.team6.uicomponents
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.team6.R
 import com.example.team6.model.Click
 import com.example.team6.model.KinderInfo
@@ -45,10 +47,6 @@ import kotlinx.coroutines.launch
 fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val defaultPosition = LatLng(37.5408, 127.0793)
     val currentPosition = viewModel.currentLocation ?: defaultPosition
-
-    val kindergartenList by viewModel.kindergartenList.collectAsState()
-
-
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition(currentPosition, 15.0)
@@ -131,6 +129,7 @@ fun MapScreen(viewModel: MainViewModel) {
     var clicklist by remember { mutableStateOf<KinderInfo?>(null) }
 
     val clickData by viewModel.clickdata.collectAsState()
+    val currentAddress by viewModel.addressText.collectAsState()
 
 
     // 💡 항상 UI를 보여줌
@@ -200,9 +199,17 @@ fun MapScreen(viewModel: MainViewModel) {
                 onClose = { showFilter = false },
                 onFilterApplied = { selectedDistance, selectedConditions ->
                     scope.launch { // 비동기 작업을 위한 코루틴 스코프 시작
-                        val sido = "서울특별시"
-                        val sgg = "광진구"
-
+                        viewModel.changedistance(selectedDistance)
+                        val sidoSggCodeMap = viewModel.nameToMapCode
+                        var sido = ""
+                        var sgg = ""
+                        for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                            if (currentAddress.contains(sidoCandidate) && currentAddress.contains(sggCandidate)) {
+                                sido = sidoCandidate
+                                sgg = sggCandidate
+                                break
+                            }
+                        }
                         val fetchJobs = mutableListOf<Job>()
 
                         fetchJobs.add(launch { viewModel.fetchKindergartenData(sido, sgg) })
@@ -277,9 +284,10 @@ fun MapScreen(viewModel: MainViewModel) {
 @Composable
 fun FilterModal(
     onClose: () -> Unit,
-    onFilterApplied: (selectedDistance: String, selectedConditions: List<String>) -> Unit
+    onFilterApplied: (selectedDistance: String, selectedConditions: List<String>) -> Unit,
+    viewModel: MainViewModel = viewModel()
 ) {
-    val distances = listOf("500m", "1km", "3km", "5km", "10km")
+    val distances = listOf("1km", "2km", "4km", "10km")
     val conditions = listOf("입소 가능", "통학차량 여부", "놀이터 여부", "CCTV 여부")
 
     var selectedDistance by remember { mutableStateOf("1km") }

@@ -8,11 +8,14 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.team6.uicomponents.BottomNavigationBar
 import com.example.team6.model.BottomNavRoute
+import com.example.team6.model.Routes
 import com.example.team6.model.UserInfo
 import com.example.team6.uicomponents.AccountInfoScreen
 import com.example.team6.uicomponents.FavoriteNurseriesScreen
@@ -90,8 +93,31 @@ fun MainScreen(
             composable("question") {
                 QuestionScreen(navController = navController)
             }
-            composable("result") {
-                ResultScreen(navController = navController)
+            composable(
+                route = Routes.ResultWithArgs.route,
+                arguments = listOf(
+                    navArgument("age") { type = NavType.StringType },
+                    navArgument("importantPoint") { type = NavType.StringType },
+                    navArgument("guardianAvailable") { type = NavType.StringType },
+                    navArgument("active") { type = NavType.StringType } ,
+                    navArgument("nowadmission") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                // NavBackStackEntry에서 인자를 추출합니다.
+                val age = backStackEntry.arguments?.getString("age") ?: ""
+                val importantPoint = backStackEntry.arguments?.getString("importantPoint") ?: ""
+                val guardianAvailable = backStackEntry.arguments?.getString("guardianAvailable") ?: ""
+                val active = backStackEntry.arguments?.getString("active") ?: ""
+                val nowadmission = backStackEntry.arguments?.getString("nowadmission") ?: ""
+
+                ResultScreen(
+                    navController = navController,
+                    age = age,
+                    importantPoint = importantPoint,
+                    guardianAvailable = guardianAvailable,
+                    active = active,
+                    now = nowadmission
+                )
             }
         }
     }
