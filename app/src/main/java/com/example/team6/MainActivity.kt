@@ -1,6 +1,5 @@
 package com.example.team6
 
-import ClickTest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +16,6 @@ import com.example.team6.model.Click
 import com.example.team6.navGraph.NavGraph
 import com.example.team6.network.GeocodingTestScreen
 import com.example.team6.ui.theme.Team6Theme
-import com.example.team6.uicomponents.HomeScreen
 import com.example.team6.uicomponents.NaverMapScreen
 import com.example.team6.viewmodel.MainViewModel
 
@@ -38,8 +36,6 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         NavGraph(navController = navController)
-                        //ClickTest()
-                        //GeocodingTestScreen()
                     }
                 }
 

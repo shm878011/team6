@@ -9,4 +9,11 @@ sealed class Routes(val route: String) {
     object FavoriteNurseries : Routes("favorite_nurseries") // 어린이집 추천
     object LocationSetting : Routes("location_setting") // 위치 설정
 
+    object ResultWithArgs : Routes(
+        "result/{age}/{importantPoint}/{guardianAvailable}/{active}/{nowadmission}"
+    ) {
+        fun createRoute(age: String, importantPoint: String, guardianAvailable: String, active: String, nowadmission: String): String {
+            return "result/$age/$importantPoint/$guardianAvailable/$active/$nowadmission"
+        }
+    }
 }
