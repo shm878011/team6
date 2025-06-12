@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -16,8 +14,7 @@ import androidx.navigation.navArgument
 import com.example.team6.uicomponents.BottomNavigationBar
 import com.example.team6.model.BottomNavRoute
 import com.example.team6.model.Routes
-import com.example.team6.model.UserInfo
-import com.example.team6.screens.InfoScreen
+import com.example.team6.screens.InfoMainScreen
 import com.example.team6.uicomponents.AccountInfoScreen
 import com.example.team6.uicomponents.FavoriteNurseriesScreen
 import com.example.team6.uicomponents.LocationSettingScreen
@@ -64,7 +61,7 @@ fun MainScreen(
                 RecommendScreen(navController)
             }
             composable(BottomNavRoute.Info.route) {
-                InfoScreen(navController)
+                InfoMainScreen(navController)
             }
 
             composable(BottomNavRoute.MyPage.route) {
