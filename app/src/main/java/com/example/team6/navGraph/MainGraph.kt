@@ -21,6 +21,10 @@ import com.example.team6.uicomponents.LocationSettingScreen
 import com.example.team6.uicomponents.MyPageScreen
 import com.example.team6.uicomponents.MyReviewsScreen
 import com.example.team6.uicomponents.MapScreen
+import com.example.team6.uicomponents.info.EduDetailScreen
+import com.example.team6.uicomponents.info.FoodDetailScreen
+import com.example.team6.uicomponents.info.NapDetailScreen
+import com.example.team6.uicomponents.info.PlayDetailScreen
 import com.example.team6.uicomponents.recommend.QuestionScreen
 import com.example.team6.uicomponents.recommend.RecommendScreen
 import com.example.team6.uicomponents.recommend.ResultScreen
@@ -63,6 +67,12 @@ fun MainScreen(
             composable(BottomNavRoute.Info.route) {
                 InfoMainScreen(navController)
             }
+
+            composable("nap_detail")  { NapDetailScreen() }
+            composable("play_detail") { PlayDetailScreen() }
+            composable("food_detail") { FoodDetailScreen() }
+            composable("edu_detail") { EduDetailScreen() }
+
 
             composable(BottomNavRoute.MyPage.route) {
                 MyPageScreen(navController)

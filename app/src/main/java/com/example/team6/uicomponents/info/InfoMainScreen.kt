@@ -20,15 +20,17 @@ import com.example.team6.model.InfoItem
 
 val infoList = listOf(
     InfoItem("낮잠 습관 들이기", "아이가 편안하게 낮잠 자는 법", R.drawable.img_info_nap, "nap_detail"),
-    InfoItem("나이대별 놀이법 TOP5", "집에서도 쉽게 할 수 있는 창의 놀이", R.drawable.img_info_play, "play_detail"),
-    InfoItem("입소신청 완전정리", "어린이집 신청 우선순위 기준 총정리", R.drawable.img_info_kin, "kin_detail"),
-    InfoItem("식습관 기르기", "아이에게 올바른 식습관을 길러주는 팁", R.drawable.img_info_food, "food_detail")
+    InfoItem("나이대별 놀이법 TOP5", "창의 놀이 소개", R.drawable.img_info_play, "play_detail"),
+    InfoItem("식습관 기르기", "식습관 기르는 법", R.drawable.img_info_food, "food_detail"),
+    InfoItem("올바른 훈육 방법", "아이의 마음을 길러주는 긍정육아", R.drawable.img_info_edu, "edu_detail")
+
 )
 
 @Composable
 fun InfoMainScreen(navController: NavController) {
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .padding(start = 16.dp)
     ) {
         Text(
@@ -59,7 +61,7 @@ fun InfoListItem(item: InfoItem, navController: NavController) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                navController.navigate("info_detail/${item.title}")
+                navController.navigate(item.route)
             }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
