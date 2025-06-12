@@ -17,13 +17,13 @@ import com.example.team6.uicomponents.BottomNavigationBar
 import com.example.team6.model.BottomNavRoute
 import com.example.team6.model.Routes
 import com.example.team6.model.UserInfo
+import com.example.team6.screens.InfoScreen
 import com.example.team6.uicomponents.AccountInfoScreen
 import com.example.team6.uicomponents.FavoriteNurseriesScreen
 import com.example.team6.uicomponents.LocationSettingScreen
 import com.example.team6.uicomponents.MyPageScreen
 import com.example.team6.uicomponents.MyReviewsScreen
 import com.example.team6.uicomponents.MapScreen
-import com.example.team6.uicomponents.InfoScreen
 import com.example.team6.uicomponents.recommend.QuestionScreen
 import com.example.team6.uicomponents.recommend.RecommendScreen
 import com.example.team6.uicomponents.recommend.ResultScreen
@@ -64,7 +64,7 @@ fun MainScreen(
                 RecommendScreen(navController)
             }
             composable(BottomNavRoute.Info.route) {
-                InfoScreen()
+                InfoScreen(navController)
             }
 
             composable(BottomNavRoute.MyPage.route) {
