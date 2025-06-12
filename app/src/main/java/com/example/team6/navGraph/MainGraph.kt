@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -16,14 +14,17 @@ import androidx.navigation.navArgument
 import com.example.team6.uicomponents.BottomNavigationBar
 import com.example.team6.model.BottomNavRoute
 import com.example.team6.model.Routes
-import com.example.team6.model.UserInfo
+import com.example.team6.screens.InfoMainScreen
 import com.example.team6.uicomponents.AccountInfoScreen
 import com.example.team6.uicomponents.FavoriteNurseriesScreen
 import com.example.team6.uicomponents.LocationSettingScreen
 import com.example.team6.uicomponents.MyPageScreen
 import com.example.team6.uicomponents.MyReviewsScreen
 import com.example.team6.uicomponents.MapScreen
-import com.example.team6.uicomponents.InfoScreen
+import com.example.team6.uicomponents.info.EduDetailScreen
+import com.example.team6.uicomponents.info.FoodDetailScreen
+import com.example.team6.uicomponents.info.NapDetailScreen
+import com.example.team6.uicomponents.info.PlayDetailScreen
 import com.example.team6.uicomponents.recommend.QuestionScreen
 import com.example.team6.uicomponents.recommend.RecommendScreen
 import com.example.team6.uicomponents.recommend.ResultScreen
@@ -64,8 +65,14 @@ fun MainScreen(
                 RecommendScreen(navController)
             }
             composable(BottomNavRoute.Info.route) {
-                InfoScreen()
+                InfoMainScreen(navController)
             }
+
+            composable("nap_detail")  { NapDetailScreen() }
+            composable("play_detail") { PlayDetailScreen() }
+            composable("food_detail") { FoodDetailScreen() }
+            composable("edu_detail") { EduDetailScreen() }
+
 
             composable(BottomNavRoute.MyPage.route) {
                 MyPageScreen(navController)
