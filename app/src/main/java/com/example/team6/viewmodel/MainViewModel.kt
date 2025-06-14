@@ -35,6 +35,12 @@ import kotlin.collections.List
 import kotlin.collections.filter
 
 import android.location.Location
+import com.example.team6.model.Review
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -631,7 +637,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var clickRoomCount = 0
             var clickPlygCkYn = "N"
             var clickTotalCapacity = basicKinderInfo?.totalCapacity ?: 0
-            var clickCurrentStudents = basicKinderInfo?.current ?: 0
+            val clickCurrentStudents = listOf(
+                basicKinderInfo?.current3yrOlds ?: 0,
+                basicKinderInfo?.current4yrOlds ?: 0,
+                basicKinderInfo?.current5yrOlds ?: 0,
+                basicKinderInfo?.currentMixedOlds ?: 0,
+                basicKinderInfo?.currentSpecialNeedsOlds ?: 0
+            ).sum()
             var clickStaffCount = 0
             var clickVhclOprnYn = "N"
             var clickHomepage = basicKinderInfo?.hpaddr ?: "홈페이지 정보 없음"
@@ -763,5 +775,91 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             updateRangelocation(10.0)
         }
     }
+
+    val reviewList = MutableStateFlow<List<Review>>(emptyList())
+    val selectedReviewNursery = MutableStateFlow<Click?>(null)
+
+    fun loadReviews(kinderCode: String) {
+        val db = FirebaseDatabase.getInstance().getReference("reviews").child(kinderCode)
+        db.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val list = snapshot.children.mapNotNull { it.getValue(Review::class.java) }
+                reviewList.value = list.sortedByDescending { it.timestamp }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    fun openReviewCard(nursery: Click) {
+        selectedReviewNursery.value = nursery
+        loadReviews(nursery.name) // 유치원 이름을 고유 ID로 사용 중
+    }
+
+    fun closeReviewCard() {
+        selectedReviewNursery.value = null
+        reviewList.value = emptyList()
+    }
+
+    fun submitReview(kinderName: String, text: String, rating: Int) {
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user != null) {
+            val uid = user.uid
+            val nickname = user.displayName ?: "익명"
+            val review = Review(
+                userId = uid,
+                nickname = nickname,
+                text = text,
+                rating = rating,
+                timestamp = System.currentTimeMillis()
+            )
+
+            val safeName = kinderName.replace(".", "_").replace("/", "_")  // 중요
+
+            val dbRef = FirebaseDatabase.getInstance()
+                .getReference("reviews")
+                .child(safeName)
+                .push()
+
+            dbRef.setValue(review)
+                .addOnSuccessListener {
+                    Log.d("Firebase", "리뷰 저장 성공")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("Firebase", "리뷰 저장 실패: ${e.message}")
+                }
+        } else {
+            Log.e("Firebase", "로그인된 유저 없음")
+        }
+    }
+
+
+    // 🔼 파일 상단 쪽
+    val _myReviewList = MutableStateFlow<List<Review>>(emptyList())
+    val myReviewList: StateFlow<List<Review>> = _myReviewList
+
+    // 🔽 아래쪽 함수들 사이에 추가
+    fun loadMyReviews() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db = FirebaseDatabase.getInstance().getReference("reviews")
+
+        db.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val myReviews = mutableListOf<Review>()
+                for (kinderSnapshot in snapshot.children) {
+                    for (reviewSnapshot in kinderSnapshot.children) {
+                        val review = reviewSnapshot.getValue(Review::class.java)
+                        if (review?.userId == uid) {
+                            myReviews.add(review)
+                        }
+                    }
+                }
+                _myReviewList.value = myReviews.sortedByDescending { it.timestamp }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
 
 }
