@@ -36,9 +36,23 @@ class FirebaseAuthViewModel : ViewModel() {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    saveNicknameToDatabase(nickname)
-                    _authResult.value = "회원가입 성공"
-                    _isGuest.value = false
+                    val user = auth.currentUser
+
+                    // ✅ displayName 설정 추가
+                    val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                        .setDisplayName(nickname)
+                        .build()
+
+                    user?.updateProfile(profileUpdates)
+                        ?.addOnCompleteListener { updateTask ->
+                            if (updateTask.isSuccessful) {
+                                saveNicknameToDatabase(nickname)
+                                _authResult.value = "회원가입 성공"
+                                _isGuest.value = false
+                            } else {
+                                _authResult.value = "프로필 설정 실패: ${updateTask.exception?.message}"
+                            }
+                        }
                 } else {
                     _authResult.value = "회원가입 실패: ${task.exception?.message}"
                 }

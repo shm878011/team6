@@ -1,10 +1,12 @@
 package com.example.team6.uicomponents
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,8 +28,10 @@ import com.example.team6.viewmodel.MainViewModel
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,14 +55,15 @@ fun ReviewCardBottomSheet(viewModel: MainViewModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .padding(top = 60.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)  //
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                // 상단 제목 + 닫기
+            Column(modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+                .heightIn(min = 200.dp, max = 300.dp) // 전체 높이 제한 (필요시)
+            ) {
+                // 상단: 제목 & 닫기 버튼
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { viewModel.closeReviewCard() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
-                    }
                     Text("리뷰 목록", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { viewModel.closeReviewCard() }) {
@@ -79,9 +84,7 @@ fun ReviewCardBottomSheet(viewModel: MainViewModel) {
                     Column(modifier = Modifier.padding(top = 12.dp)) {
                         OutlinedTextField(
                             value = reviewText,
-                            onValueChange = { text ->
-                                reviewText = text
-                            },
+                            onValueChange = { reviewText = it },
                             label = { Text("리뷰 내용") },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -111,17 +114,22 @@ fun ReviewCardBottomSheet(viewModel: MainViewModel) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 리뷰 리스트
+                // 🔽 리뷰 목록만 스크롤되도록
                 if (reviews.isEmpty()) {
                     Text("아직 작성된 리뷰가 없습니다.", color = Color.Gray)
                 } else {
-                    LazyColumn {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)  // 리뷰 목록만 확장되며 스크롤됨
+                            .fillMaxWidth()
+                    ) {
                         items(reviews) { review ->
                             ReviewItem(review)
                         }
                     }
                 }
             }
+
         }
     }
 }
@@ -131,12 +139,25 @@ fun ReviewCardBottomSheet(viewModel: MainViewModel) {
 fun ReviewItem(review: Review) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row {
-            Text(review.nickname, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("★ ${review.rating}", color = Color(0xFFFFC107))
+            Text(review.nickname)
             Spacer(modifier = Modifier.weight(1f))
+
+            // 별점 표시: 채워진 별(노랑), 빈 별(회색)
+            Row {
+                repeat(review.rating) {
+                    Text("★", color = Color(0xFFFFC107)) // 채워진 별: 노란색
+                }
+                repeat(5 - review.rating) {
+                    Text("★", color = Color.LightGray) // 빈 별: 회색
+                }
+            }
         }
         Text(review.text)
-
+        Spacer(modifier = Modifier.height(8.dp))
+        Divider(color = Color.LightGray, thickness = 1.dp)
     }
 }
+
+
+
+
