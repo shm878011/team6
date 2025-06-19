@@ -1,5 +1,7 @@
 package com.example.team6.model
 
+import okhttp3.Route
+
 sealed class Routes(val route: String) {
     object Login : Routes("login") // 로그인화면
     object Signup : Routes("signup") // 회원가입

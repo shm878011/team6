@@ -1,8 +1,10 @@
 package com.example.team6.uicomponents.recommend
 
+import android.R.attr.onClick
 import android.R.attr.text
 import android.annotation.SuppressLint
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,8 +13,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +31,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import com.example.team6.uicomponents.NurseryDetailCard
+import com.example.team6.uicomponents.NurseryListItem
+
 
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
@@ -36,8 +45,16 @@ fun ResultScreen(
     guardianAvailable: String,
     active: String,
     now: String,
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel
 ) {
+    var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.clearClickList()
+        isLoading = true
+    }
+    val clicklist by viewModel.clicklist.collectAsState()
+    val clickData by viewModel.clickdata.collectAsState()
 
     val currentAddress by viewModel.addressText.collectAsState()
     val scope = rememberCoroutineScope()
@@ -114,16 +131,48 @@ fun ResultScreen(
                 .padding(bottom = 20.dp)
         ) {
             items(checklist) { item ->
-                KindergartenCard(item)
+                KindergartenCard(item, onClick = {
+                    viewModel.setClickList(item)
+                })
+            }
+        }
+    }
+    if (isLoading) {
+        clicklist?.let {
+            val sidoSggCodeMap = viewModel.nameToMapCode
+            var sido = ""
+            var sgg = ""
+            for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                if (clicklist!!.addr.contains(sidoCandidate) && clicklist!!.addr.contains(
+                        sggCandidate
+                    )
+                ) {
+                    sido = sidoCandidate
+                    sgg = sggCandidate
+                    break
+                }
+            }
+            LaunchedEffect(sido, sgg, clicklist!!.kindername) {
+                viewModel.populateClickData(sido, sgg, clicklist!!.kindername)
+            }
+            Box(modifier = Modifier.fillMaxSize()) {
+                NurseryDetailCard(
+                    nursery = clickData,
+                    isLiked = viewModel.isLiked(it),
+                    onLikeToggle = { viewModel.toggleLike(it) },
+                    onReviewClick = { /* TODO */ },
+                    onClose = { viewModel.clearClickList() },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
             }
         }
     }
 }
 
 @Composable
-fun KindergartenCard(info: KinderInfo) {
+fun KindergartenCard(info: KinderInfo, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
@@ -135,6 +184,8 @@ fun KindergartenCard(info: KinderInfo) {
             Text(text = info.kindername, fontSize = 18.sp, color = Color.Black)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "전화번호: ${info.telno}", fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "주소: ${info.addr}", fontSize = 14.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "운영 시간: ${info.opertime}", fontSize = 14.sp)
 //            Row(verticalAlignment = Alignment.CenterVertically) {

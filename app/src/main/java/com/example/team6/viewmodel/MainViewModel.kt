@@ -46,19 +46,9 @@ import kotlin.math.sqrt
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sharedPrefs = application.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
-    private val LAST_KNOWN_ADDRESS_KEY = "last_known_address"
-    private val RANGE_LOCATION_KEY = "range_location"
 
-    var Rangelocation: Double by mutableStateOf(sharedPrefs.getFloat(RANGE_LOCATION_KEY, 2.0f).toDouble())
-        private set
+    var Rangelocation: Double = -10.0
 
-    fun updateRangelocation(newValue: Double) {
-        Rangelocation = newValue
-        with(sharedPrefs.edit()) {
-            putFloat(RANGE_LOCATION_KEY, newValue.toFloat())
-            apply()
-        }
-    }
 
     val likedNurseries = mutableStateListOf<KinderInfo>()
 
@@ -71,6 +61,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun isLiked(nursery: KinderInfo): Boolean {
+        Log.d(TAG, likedNurseries.toString())
+        Log.d(TAG, nursery.toString())
         return likedNurseries.contains(nursery)
     }
     private val CURRENT_LOCATION_LAT_KEY = "current_location_latitude"
@@ -504,7 +496,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            if(newChecklist.isNotEmpty()){
+            if(newChecklist.isNotEmpty() && Rangelocation > 0){
                 currentLocation?.let { userLocation ->
                     val rangeInMeters = Rangelocation * 1000
                     newChecklist = newChecklist.filter { kinderInfo ->
@@ -751,16 +743,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun changedistance(selectedDistance: String) {
         if(selectedDistance == "1km"){
-            updateRangelocation(1.0)
+            Rangelocation = 1.0
         }
         else if(selectedDistance == "2km"){
-            updateRangelocation(2.0)
+            Rangelocation = 2.0
         }
         else if(selectedDistance == "4km"){
-            updateRangelocation(4.0)
+            Rangelocation = 4.0
         }
         else if(selectedDistance == "10km"){
-            updateRangelocation(10.0)
+            Rangelocation = 10.0
         }
     }
 
