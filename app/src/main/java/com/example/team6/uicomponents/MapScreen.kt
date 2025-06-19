@@ -175,7 +175,6 @@ fun MapScreen(viewModel: MainViewModel) {
 
     val kindergartenList by viewModel.kindergartenList.collectAsState()
     val checklist by viewModel.checklist.collectAsState()
-    //var clicklist by remember { mutableStateOf<KinderInfo?>(null) }
     val clicklist by viewModel.clicklist.collectAsState()
     val clickData by viewModel.clickdata.collectAsState()
     val currentAddress by viewModel.addressText.collectAsState()

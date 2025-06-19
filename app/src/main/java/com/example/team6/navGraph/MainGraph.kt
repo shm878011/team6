@@ -91,7 +91,7 @@ fun MainScreen(
                 MyReviewsScreen(navController)
             }
             composable("favorite_nurseries") {
-                FavoriteNurseriesScreen(favorites = viewModel.likedNurseries, navController)
+                FavoriteNurseriesScreen(favorites = viewModel.likedNurseries, navController, viewModel = viewModel)
             }
             composable("location_setting") {
                 LocationSettingScreen(navController,viewModel)
@@ -123,7 +123,8 @@ fun MainScreen(
                     importantPoint = importantPoint,
                     guardianAvailable = guardianAvailable,
                     active = active,
-                    now = nowadmission
+                    now = nowadmission,
+                    viewModel = viewModel
                 )
             }
         }
