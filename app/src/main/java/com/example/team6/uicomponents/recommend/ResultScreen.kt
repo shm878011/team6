@@ -160,7 +160,7 @@ fun ResultScreen(
                     nursery = clickData,
                     isLiked = viewModel.isLiked(it),
                     onLikeToggle = { viewModel.toggleLike(it) },
-                    onReviewClick = { /* TODO */ },
+                    onReviewClick = { viewModel.openReviewCard(clickData) },
                     onClose = { viewModel.clearClickList() },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
