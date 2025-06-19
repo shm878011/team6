@@ -159,8 +159,9 @@ fun ResultScreen(
                 NurseryDetailCard(
                     nursery = clickData,
                     isLiked = viewModel.isLiked(it),
+                    reviewCount = viewModel.reviewList.collectAsState().value.size,
                     onLikeToggle = { viewModel.toggleLike(it) },
-                    onReviewClick = { viewModel.openReviewCard(clickData) },
+                    onReviewClick = { viewModel.openReviewCard(clickData)},
                     onClose = { viewModel.clearClickList() },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
