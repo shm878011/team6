@@ -190,7 +190,6 @@ fun MapScreen(viewModel: MainViewModel) {
 
     // 💡 항상 UI를 보여줌
     Box(modifier = Modifier.fillMaxSize()) {
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -329,14 +328,22 @@ fun MapScreen(viewModel: MainViewModel) {
             NurseryDetailCard(
                 nursery = clickData,
                 isLiked = viewModel.isLiked(it),
+                reviewCount = viewModel.reviewList.collectAsState().value.size,
                 onLikeToggle = { viewModel.toggleLike(it) },
-                onReviewClick = { /* TODO */ },
+                onReviewClick = { viewModel.openReviewCard(clickData)},
                 onClose = { viewModel.clearClickList() },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+
+        val selectedReviewKinder = viewModel.selectedReviewNursery.collectAsState().value
+        if (selectedReviewKinder != null) {
+            ReviewCardBottomSheet(viewModel = viewModel)
+        }
+
     }
 }
+
 
 
 @Composable
@@ -424,6 +431,7 @@ fun NurseryListItem(kinderinfo: KinderInfo, onClick: () -> Unit) {
 fun NurseryDetailCard(
     nursery: Click,
     isLiked: Boolean,
+    reviewCount: Int,
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -452,6 +460,12 @@ fun NurseryDetailCard(
             Text(nursery.address)
             Text(nursery.phone.toString())
             Spacer(modifier = Modifier.height(8.dp))
+
+            Row {
+                Text("리뷰 $reviewCount", color = Color.Blue,
+                    modifier = Modifier.clickable { onReviewClick() })
+            }
+
             Row {
                 Text("CCTV: ${nursery.cctv_ist_total}", modifier = Modifier.weight(1f))
                 Text("놀이터: ${nursery.plyg_ck_yn}", modifier = Modifier.weight(1f))
