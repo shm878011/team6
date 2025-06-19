@@ -5,5 +5,6 @@ data class Review(
     val nickname: String = "",
     val rating: Int = 5,
     val text: String = "",
-    val timestamp: Long = 0L
+    val timestamp: Long = 0,
+    var key: String? = null  // 삭제용 키
 )

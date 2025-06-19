@@ -775,7 +775,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val db = FirebaseDatabase.getInstance().getReference("reviews").child(kinderCode)
         db.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = snapshot.children.mapNotNull { it.getValue(Review::class.java) }
+                val list = snapshot.children.mapNotNull { snap ->
+                    val review = snap.getValue(Review::class.java)
+                    review?.key = snap.key  // 🔑 삭제용 key 추가
+                    review
+                }
                 reviewList.value = list.sortedByDescending { it.timestamp }
             }
 
@@ -841,6 +845,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 for (kinderSnapshot in snapshot.children) {
                     for (reviewSnapshot in kinderSnapshot.children) {
                         val review = reviewSnapshot.getValue(Review::class.java)
+                        review?.key = reviewSnapshot.key
                         if (review?.userId == uid) {
                             myReviews.add(review)
                         }
@@ -851,6 +856,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             override fun onCancelled(error: DatabaseError) {}
         })
+    }
+
+    fun deleteReview(review: Review) {
+        val db = FirebaseDatabase.getInstance()
+            .getReference("reviews")
+
+        // 모든 유치원을 순회하며 키가 일치하는 리뷰 삭제
+        db.get().addOnSuccessListener { snapshot ->
+            for (nurserySnap in snapshot.children) {
+                for (reviewSnap in nurserySnap.children) {
+                    if (reviewSnap.key == review.key) {
+                        nurserySnap.ref.child(review.key!!).removeValue()
+                        loadMyReviews()  // 삭제 후 갱신
+                        return@addOnSuccessListener
+                    }
+                }
+            }
+        }
     }
 
 
