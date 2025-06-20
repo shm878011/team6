@@ -508,6 +508,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var newChecklist: List<KinderInfo> = kindergartenList.value
             var changelist: List<BasicInfo> = _kindergartenBasicList.value
             Log.d(TAG,"chagelist ${changelist}")
+            
+            // 🔥 첫 필터링 시 데이터 검증
+            Log.d(TAG, "kindergartenList 크기: ${kindergartenList.value.size}")
+            Log.d(TAG, "_kindergartenBasicList 크기: ${_kindergartenBasicList.value.size}")
+            Log.d(TAG, "schoolBusKindergartens 크기: ${schoolBusKindergartens.value.size}")
+            Log.d(TAG, "kindergartensWithSafePlayground 크기: ${kindergartensWithSafePlayground.value.size}")
+            Log.d(TAG, "_kindergartensWithCCTV 크기: ${_kindergartensWithCCTV.value.size}")
+            
             if (changelist.isNotEmpty() && schoolBusKindergartens.value.isNotEmpty()) {
                 val schoolBusNames = schoolBusKindergartens.value.map { Pair(it.kindercode, it.kindername) }.toSet()
                 changelist = changelist.filter { kinderInfo ->
@@ -538,24 +546,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 changelist = changelist.filter { kinderInfo ->
                     Pair(kinderInfo.kindercode, kinderInfo.kindername) in CCTVKinderNames
                 }
-                Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${changelist.size}개 유치원 매칭.")
+                Log.d(TAG, "Checklist 업데이트 (모드: CCTV): ${changelist.size}개 유치원 매칭.")
             } else {
-                Log.d(TAG, "Checklist 업데이트(놀이터 안전): 원본 리스트 중 하나 이상이 비어있음.")
+                Log.d(TAG, "Checklist 업데이트(CCTV): 원본 리스트 중 하나 이상이 비어있음.")
             }
             if (changelist.isNotEmpty()){
                 val CHANGE = changelist.map { Pair(it.kindername, it.addr) }.toSet()
                 newChecklist = newChecklist.filter { kinderInfo ->
                     Pair(kinderInfo.kindername, kinderInfo.addr) in CHANGE
                 }
+                Log.d(TAG, "BasicInfo 매칭 후 newChecklist 크기: ${newChecklist.size}")
             }
             else{
                 newChecklist = emptyList()
+                Log.d(TAG, "changelist가 비어있어서 newChecklist를 비움")
             }
 
             if(newChecklist.isNotEmpty() && _Canadmission){
                 newChecklist = newChecklist.filter { KinderInfo->
                     KinderInfo.totalCapacity > KinderInfo.current
                 }
+                Log.d(TAG, "입소 가능 필터링 후: ${newChecklist.size}개")
             }
 
             if(newChecklist.isNotEmpty() && Rangelocation > 0){
@@ -578,6 +589,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d(TAG, "Checklist 업데이트(거리 필터링): currentLocation이 null이므로 거리 필터링을 건너뜁니다.")
                 }
             }
+
+            // 🔥 좌표 유효성 검사 추가 - 카드와 마커 일치시키기
+            val beforeCoordinateFilter = newChecklist.size
+            newChecklist = newChecklist.filter { kinderInfo ->
+                kinderInfo.latitude != 0.0 && kinderInfo.longitude != 0.0 &&
+                kinderInfo.latitude != null && kinderInfo.longitude != null &&
+                kinderInfo.latitude in -90.0..90.0 && kinderInfo.longitude in -180.0..180.0
+            }
+            Log.d(TAG, "좌표 필터링 전: ${beforeCoordinateFilter}개, 후: ${newChecklist.size}개")
 
             _checklist.value = newChecklist
             Log.d(TAG, "최종 Checklist 업데이트 완료: ${newChecklist.size}개 유치원.")
