@@ -53,7 +53,7 @@ fun SignupScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("아이디") }) // 이메일
+        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("이메일") }) // 이메일
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("비밀번호") })
         Spacer(modifier = Modifier.height(12.dp))
