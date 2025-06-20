@@ -546,6 +546,18 @@ fun NurseryDetailCard(
                 Text("통학차량: ${nursery.vhcl_oprn_yn}", modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("홈페이지: ${nursery.homepage}", modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("운영시간: ${nursery.time}", modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("전화번호: ${nursery.phone}", modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
 //            Text(
 //                text = "리뷰 ${nursery.reviewCount}",
 //                color = Color.Blue,
