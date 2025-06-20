@@ -26,12 +26,15 @@ fun EduDetailScreen() {
             .padding(horizontal = 20.dp, vertical = 24.dp)
             .verticalScroll(scrollState)
     ) {
-        Text(
-            text = "올바른 훈육 방법",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 32.sp,
-        )
+        Row {
+            Text(
+                text = "올바른 훈육 방법",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 32.sp,
+            )
+        }
+
 
         Spacer(Modifier.height(16.dp))
 
@@ -113,35 +116,4 @@ fun EduDetailScreen() {
             lineHeight = 10.sp
         )
     }
-}
-@Composable
-fun WebViewYoutubePlayer(youtubeUrl: String) {
-    val webViewState = rememberWebViewState(url = youtubeUrl)
-    val webViewClient = AccompanistWebViewClient()
-    val webChromeClient = AccompanistWebChromeClient()
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.toFloat()
-    val screenHeight = (screenWidth * 9 / 16).dp
-
-    WebView(
-        modifier = Modifier
-            .height(screenHeight)
-            .background(color = Color.Transparent)
-            .fillMaxWidth(),
-        state = webViewState,
-        client = webViewClient,
-        chromeClient = webChromeClient,
-        onCreated = { webView ->
-            with(webView) {
-                settings.run {
-                    javaScriptEnabled = true
-                    domStorageEnabled = true
-                    javaScriptCanOpenWindowsAutomatically = false
-                    mediaPlaybackRequiresUserGesture = false
-                }
-
-                setBackgroundColor(0)
-            }
-        }
-    )
 }

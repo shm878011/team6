@@ -36,6 +36,8 @@ fun FoodDetailScreen() {
             fontSize = 16.sp,
             lineHeight = 24.sp
         )
+        Spacer(Modifier.height(24.dp))
+
         WebViewYoutubePlayer("https://www.youtube.com/watch?v=_7Luyv02YSc")
 
 

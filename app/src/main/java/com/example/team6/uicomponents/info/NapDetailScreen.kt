@@ -36,6 +36,9 @@ fun NapDetailScreen() {
         )
 
         Spacer(Modifier.height(24.dp))
+        WebViewYoutubePlayer("https://www.youtube.com/watch?v=HqyV1uPWrfY")
+
+        Spacer(Modifier.height(24.dp))
 
         SectionTitle("1. 규칙적인 낮잠 시간 설정")
         SectionText("매일 일정한 시간에 낮잠을 유도하면 생체 리듬이 안정되고, 아이에게 예측 가능한 패턴이 생겨 심리적 안정감이 형성됩니다.")
