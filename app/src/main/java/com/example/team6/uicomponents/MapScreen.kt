@@ -98,7 +98,12 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             checklist.forEach { kindergarten ->
                 if (kindergarten.latitude != 0.0 && kindergarten.longitude != 0.0) {
                     Marker(
-                        state = rememberMarkerState(position = LatLng(kindergarten.latitude!!, kindergarten.longitude!!)),
+                        state = rememberMarkerState(
+                            position = LatLng(
+                                kindergarten.latitude!!,
+                                kindergarten.longitude!!
+                            )
+                        ),
                         captionText = kindergarten.kindername,
                         icon = OverlayImage.fromResource(R.drawable.marker2),
                         width = 48.dp,
@@ -109,7 +114,10 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                             var sido = ""
                             var sgg = ""
                             for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
-                                if (kindergarten.addr.contains(sidoCandidate) && kindergarten.addr.contains(sggCandidate)) {
+                                if (kindergarten.addr.contains(sidoCandidate) && kindergarten.addr.contains(
+                                        sggCandidate
+                                    )
+                                ) {
                                     sido = sidoCandidate
                                     sgg = sggCandidate
                                     break
@@ -118,7 +126,10 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
                             viewModel.populateClickData(sido, sgg, kindergarten.kindername)
                             viewModel.setClickList(kindergarten)
-                            viewModel.updateNearbyZones(kindergarten.latitude!!, kindergarten.longitude!!)
+                            viewModel.updateNearbyZones(
+                                kindergarten.latitude!!,
+                                kindergarten.longitude!!
+                            )
                             true // 클릭 이벤트 소비
                         }
                     )
@@ -141,7 +152,14 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
         IconButton(
             onClick = {
                 val targetPosition = viewModel.currentLocation ?: defaultPosition
-                cameraPositionState.move(CameraUpdate.toCameraPosition(CameraPosition(targetPosition, 15.0)))
+                cameraPositionState.move(
+                    CameraUpdate.toCameraPosition(
+                        CameraPosition(
+                            targetPosition,
+                            15.0
+                        )
+                    )
+                )
             },
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -192,8 +210,8 @@ fun MapScreen(viewModel: MainViewModel) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-        ){
-            NaverMapScreen(modifier = Modifier.fillMaxSize(),viewModel)
+        ) {
+            NaverMapScreen(modifier = Modifier.fillMaxSize(), viewModel)
         }
 
         // 상단 검색/필터 바
@@ -214,7 +232,13 @@ fun MapScreen(viewModel: MainViewModel) {
                 placeholder = { Text("검색") },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    containerColor = Color(0xFFFFFFFF),
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = Color.Transparent
+                )
             )
 
             Icon(
@@ -259,7 +283,10 @@ fun MapScreen(viewModel: MainViewModel) {
                         var sido = ""
                         var sgg = ""
                         for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
-                            if (currentAddress.contains(sidoCandidate) && currentAddress.contains(sggCandidate)) {
+                            if (currentAddress.contains(sidoCandidate) && currentAddress.contains(
+                                    sggCandidate
+                                )
+                            ) {
                                 sido = sidoCandidate
                                 sgg = sggCandidate
                                 break
@@ -269,33 +296,40 @@ fun MapScreen(viewModel: MainViewModel) {
 
                         fetchJobs.add(launch { viewModel.fetchKindergartenData(sido, sgg) })
 
-                        if("통학차량 여부" in selectedConditions)
-                        {
-                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSchoolBus(sido, sgg) })
-                        }
-                        else{
+                        if ("통학차량 여부" in selectedConditions) {
+                            fetchJobs.add(launch {
+                                viewModel.fetchKindergartensWithSchoolBus(
+                                    sido,
+                                    sgg
+                                )
+                            })
+                        } else {
                             viewModel.RemoveBus()
                         }
-                        if("놀이터 여부" in selectedConditions)
-                        {
-                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSafePlayground(sido, sgg) })
-                        }
-                        else{
+                        if ("놀이터 여부" in selectedConditions) {
+                            fetchJobs.add(launch {
+                                viewModel.fetchKindergartensWithSafePlayground(
+                                    sido,
+                                    sgg
+                                )
+                            })
+                        } else {
                             viewModel.RemovePlayground()
                         }
-                        if("CCTV 여부" in selectedConditions)
-                        {
-                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSafeCCTV(sido, sgg) })
-                        }
-                        else{
+                        if ("CCTV 여부" in selectedConditions) {
+                            fetchJobs.add(launch {
+                                viewModel.fetchKindergartensWithSafeCCTV(
+                                    sido,
+                                    sgg
+                                )
+                            })
+                        } else {
                             viewModel.RemoveCCTV()
                         }
 
-                        if("입소 가능" in selectedConditions)
-                        {
+                        if ("입소 가능" in selectedConditions) {
                             viewModel.Canadmission(true)
-                        }
-                        else{
+                        } else {
                             viewModel.Canadmission(false)
                         }
 
@@ -315,7 +349,10 @@ fun MapScreen(viewModel: MainViewModel) {
             var sido = ""
             var sgg = ""
             for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
-                if (clicklist!!.addr.contains(sidoCandidate) && clicklist!!.addr.contains(sggCandidate)) {
+                if (clicklist!!.addr.contains(sidoCandidate) && clicklist!!.addr.contains(
+                        sggCandidate
+                    )
+                ) {
                     sido = sidoCandidate
                     sgg = sggCandidate
                     break
@@ -331,7 +368,7 @@ fun MapScreen(viewModel: MainViewModel) {
                 reviewCount = viewModel.reviewList.collectAsState().value.size,
                 averageRating = viewModel.averageRating.collectAsState().value,
                 onLikeToggle = { viewModel.toggleLike(it) },
-                onReviewClick = { viewModel.openReviewCard(clickData)},
+                onReviewClick = { viewModel.openReviewCard(clickData) },
                 onClose = { viewModel.clearClickList() },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
@@ -346,12 +383,11 @@ fun MapScreen(viewModel: MainViewModel) {
 }
 
 
-
 @Composable
 fun FilterModal(
     onClose: () -> Unit,
     onFilterApplied: (selectedDistance: String, selectedConditions: List<String>) -> Unit,
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel = viewModel(),
 ) {
     val distances = listOf("1km", "2km", "4km", "10km")
     val conditions = listOf("입소 가능", "통학차량 여부", "놀이터 여부", "CCTV 여부")
@@ -437,7 +473,7 @@ fun NurseryDetailCard(
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onClose: () -> Unit
+    onClose: () -> Unit,
 ) {
     Card(
         modifier = modifier.padding(16.dp),
