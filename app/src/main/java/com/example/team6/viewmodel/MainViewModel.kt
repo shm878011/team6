@@ -81,7 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var currentLocation by mutableStateOf<LatLng?>(null)
         private set
 
-    private val _addressText = MutableStateFlow("서울특별시 광진구 능동로 120 건국대학교")
+    private val _addressText = MutableStateFlow("")
     val addressText: StateFlow<String> = _addressText
 
     fun updateLocation(latLng: LatLng) {
@@ -274,6 +274,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val savedLat = sharedPrefs.getFloat(CURRENT_LOCATION_LAT_KEY, DEFAULT_LATITUDE.toFloat()).toDouble()
         val savedLng = sharedPrefs.getFloat(CURRENT_LOCATION_LNG_KEY, DEFAULT_LONGITUDE.toFloat()).toDouble()
         currentLocation = LatLng(savedLat, savedLng)
+        fetchAddressFromCoords(currentLocation!!)
 
 
         val client = OkHttpClient.Builder()
