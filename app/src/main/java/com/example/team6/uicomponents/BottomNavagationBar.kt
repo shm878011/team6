@@ -1,6 +1,8 @@
 package com.example.team6.uicomponents
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -19,9 +21,11 @@ fun BottomNavigationBar(navController: NavHostController) {
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
     NavigationBar(
-        containerColor = Color(0xeaeaea),
-        modifier = Modifier.height(94.dp),
-        tonalElevation = 8.dp
+        containerColor = Color(0xFFFFFFFF),
+        tonalElevation = 0.dp,
+        modifier = Modifier
+            .height(94.dp)
+            .background(Color.White),
     ) {
         BottomNavRoute.items.forEach { sAScreen ->
             val selected = currentDestination?.route == sAScreen.route
