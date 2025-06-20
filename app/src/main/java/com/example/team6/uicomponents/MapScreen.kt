@@ -44,6 +44,7 @@ import com.naver.maps.map.overlay.OverlayImage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalNaverMapApi::class)
 @Composable
@@ -103,44 +104,32 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel, onCa
 
             // 필터링된 유치원들 마커로 표시
             checklist.forEach { kindergarten ->
-                if (kindergarten.latitude != 0.0 && kindergarten.longitude != 0.0) {
-                    Marker(
-                        state = rememberMarkerState(
-                            position = LatLng(
-                                kindergarten.latitude!!,
-                                kindergarten.longitude!!
-                            )
-                        ),
-                        captionText = kindergarten.kindername,
-                        icon = OverlayImage.fromResource(R.drawable.marker2),
-                        width = 48.dp,
-                        height = 48.dp,
-                        onClick = {
-                            // 주소 기반으로 시도/시군구 이름 추출
-                            val sidoSggCodeMap = viewModel.nameToMapCode
-                            var sido = ""
-                            var sgg = ""
-                            for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
-                                if (kindergarten.addr.contains(sidoCandidate) && kindergarten.addr.contains(
-                                        sggCandidate
-                                    )
-                                ) {
-                                    sido = sidoCandidate
-                                    sgg = sggCandidate
-                                    break
-                                }
+                // 🔥 checklist에서 이미 유효한 좌표만 필터링했으므로 모든 항목을 마커로 표시
+                Marker(
+                    state = rememberMarkerState(position = LatLng(kindergarten.latitude!!, kindergarten.longitude!!)),
+                    captionText = kindergarten.kindername,
+                    icon = OverlayImage.fromResource(R.drawable.marker2),
+                    width = 48.dp,
+                    height = 48.dp,
+                    onClick = {
+                        // 주소 기반으로 시도/시군구 이름 추출
+                        val sidoSggCodeMap = viewModel.nameToMapCode
+                        var sido = ""
+                        var sgg = ""
+                        for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                            if (kindergarten.addr.contains(sidoCandidate) && kindergarten.addr.contains(sggCandidate)) {
+                                sido = sidoCandidate
+                                sgg = sggCandidate
+                                break
                             }
-
-                            viewModel.populateClickData(sido, sgg, kindergarten.kindername)
-                            viewModel.setClickList(kindergarten)
-                            viewModel.updateNearbyZones(
-                                kindergarten.latitude!!,
-                                kindergarten.longitude!!
-                            )
-                            true // 클릭 이벤트 소비
                         }
-                    )
-                }
+
+                        viewModel.populateClickData(sido, sgg, kindergarten.kindername)
+                        viewModel.setClickList(kindergarten)
+                        viewModel.updateNearbyZones(kindergarten.latitude!!, kindergarten.longitude!!)
+                        true // 클릭 이벤트 소비
+                    }
+                )
             }
             val schoolZones by viewModel.nearbyZones.collectAsState()
             schoolZones.forEach {
@@ -156,7 +145,6 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel, onCa
 
 
         // 커스텀 내 위치 버튼
-
             IconButton(
                 onClick = {
                     val targetPosition = viewModel.currentLocation ?: defaultPosition
@@ -189,6 +177,8 @@ fun MapScreen(viewModel: MainViewModel) {
     var query by remember { mutableStateOf("") }
     var filteredNurseries by remember { mutableStateOf<List<Nursery>>(emptyList()) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    // 🔥 상태 업데이트 강제 트리거용
+    var forceUpdate by remember { mutableStateOf(0) }
 
     val likedNurseries = viewModel.likedNurseries
 
@@ -212,13 +202,16 @@ fun MapScreen(viewModel: MainViewModel) {
             modifier = Modifier
                 .fillMaxSize()
         ){
-            NaverMapScreen(
-                modifier = Modifier.fillMaxSize(), 
-                viewModel = viewModel,
-                onCameraMove = { latLng ->
-                    viewModel.moveCameraToLocation(latLng)
-                }
-            )
+            // 🔥 forceUpdate로 강제 리컴포지션
+            key(forceUpdate) {
+                NaverMapScreen(
+                    modifier = Modifier.fillMaxSize(), 
+                    viewModel = viewModel,
+                    onCameraMove = { latLng ->
+                        viewModel.moveCameraToLocation(latLng)
+                    }
+                )
+            }
         }
 
         // 상단 검색/필터 바
@@ -239,13 +232,7 @@ fun MapScreen(viewModel: MainViewModel) {
                 placeholder = { Text("검색") },
                 modifier = Modifier
                     .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    containerColor = Color(0xFFFFFFFF),
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedBorderColor = Color.Transparent
-                )
+                    .height(48.dp)
             )
 
             Icon(
@@ -259,30 +246,33 @@ fun MapScreen(viewModel: MainViewModel) {
 
         // 💡 조건부로 BottomSheet 띄우기
         if (checklist.isNotEmpty() && showBottomSheet) {
-            BottomSheetScaffold(
-                scaffoldState = scaffoldState,
-                sheetContent = {
-                    LazyColumn(modifier = Modifier.padding(16.dp)) {
-                        items(checklist) { kinderinfo ->
-                            NurseryListItem(kinderinfo = kinderinfo, onClick = {
-                                //clicklist = kinderinfo
-                                viewModel.setClickList(kinderinfo)
-                                
-                                // 카메라를 해당 유치원 위치로 이동
-                                if (kinderinfo.latitude != 0.0 && kinderinfo.longitude != 0.0) {
-                                    viewModel.moveCameraToLocation(LatLng(kinderinfo.latitude!!, kinderinfo.longitude!!))
-                                }
-                                
-                                scope.launch {
-                                    scaffoldState.bottomSheetState.partialExpand()
-                                }
-                            })
+            // 🔥 forceUpdate로 강제 리컴포지션
+            key(forceUpdate) {
+                BottomSheetScaffold(
+                    scaffoldState = scaffoldState,
+                    sheetContent = {
+                        LazyColumn(modifier = Modifier.padding(16.dp)) {
+                            items(checklist) { kinderinfo ->
+                                NurseryListItem(kinderinfo = kinderinfo, onClick = {
+                                    //clicklist = kinderinfo
+                                    viewModel.setClickList(kinderinfo)
+                                    
+                                    // 카메라를 해당 유치원 위치로 이동
+                                    if (kinderinfo.latitude != 0.0 && kinderinfo.longitude != 0.0) {
+                                        viewModel.moveCameraToLocation(LatLng(kinderinfo.latitude!!, kinderinfo.longitude!!))
+                                    }
+                                    
+                                    scope.launch {
+                                        scaffoldState.bottomSheetState.partialExpand()
+                                    }
+                                })
+                            }
                         }
-                    }
-                },
-                sheetPeekHeight = 64.dp,
-                sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            ) {}
+                    },
+                    sheetPeekHeight = 64.dp,
+                    sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                ) {}
+            }
         }
 
         // 필터 모달
@@ -296,10 +286,7 @@ fun MapScreen(viewModel: MainViewModel) {
                         var sido = ""
                         var sgg = ""
                         for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
-                            if (currentAddress.contains(sidoCandidate) && currentAddress.contains(
-                                    sggCandidate
-                                )
-                            ) {
+                            if (currentAddress.contains(sidoCandidate) && currentAddress.contains(sggCandidate)) {
                                 sido = sidoCandidate
                                 sgg = sggCandidate
                                 break
@@ -309,47 +296,46 @@ fun MapScreen(viewModel: MainViewModel) {
 
                         fetchJobs.add(launch { viewModel.fetchKindergartenData(sido, sgg) })
 
-                        if ("통학차량 여부" in selectedConditions) {
-                            fetchJobs.add(launch {
-                                viewModel.fetchKindergartensWithSchoolBus(
-                                    sido,
-                                    sgg
-                                )
-                            })
-                        } else {
+                        if("통학차량 여부" in selectedConditions)
+                        {
+                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSchoolBus(sido, sgg) })
+                        }
+                        else{
                             viewModel.RemoveBus()
                         }
-                        if ("놀이터 여부" in selectedConditions) {
-                            fetchJobs.add(launch {
-                                viewModel.fetchKindergartensWithSafePlayground(
-                                    sido,
-                                    sgg
-                                )
-                            })
-                        } else {
+                        if("놀이터 여부" in selectedConditions)
+                        {
+                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSafePlayground(sido, sgg) })
+                        }
+                        else{
                             viewModel.RemovePlayground()
                         }
-                        if ("CCTV 여부" in selectedConditions) {
-                            fetchJobs.add(launch {
-                                viewModel.fetchKindergartensWithSafeCCTV(
-                                    sido,
-                                    sgg
-                                )
-                            })
-                        } else {
+                        if("CCTV 여부" in selectedConditions)
+                        {
+                            fetchJobs.add(launch { viewModel.fetchKindergartensWithSafeCCTV(sido, sgg) })
+                        }
+                        else{
                             viewModel.RemoveCCTV()
                         }
 
-                        if ("입소 가능" in selectedConditions) {
+                        if("입소 가능" in selectedConditions)
+                        {
                             viewModel.Canadmission(true)
-                        } else {
+                        }
+                        else{
                             viewModel.Canadmission(false)
                         }
 
                         fetchJobs.joinAll()
 
                         viewModel.updateChecklist()
+                        
+                        // 🔥 상태 업데이트 강제 트리거
+                        showBottomSheet = false
+                        delay(100) // 잠시 대기
                         showBottomSheet = checklist.isNotEmpty()
+                        forceUpdate++ // 강제 리컴포지션 트리거
+                        
                         showFilter = false
                     }
                 }
@@ -362,10 +348,7 @@ fun MapScreen(viewModel: MainViewModel) {
             var sido = ""
             var sgg = ""
             for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
-                if (clicklist!!.addr.contains(sidoCandidate) && clicklist!!.addr.contains(
-                        sggCandidate
-                    )
-                ) {
+                if (clicklist!!.addr.contains(sidoCandidate) && clicklist!!.addr.contains(sggCandidate)) {
                     sido = sidoCandidate
                     sgg = sggCandidate
                     break
@@ -379,7 +362,7 @@ fun MapScreen(viewModel: MainViewModel) {
                 isLiked = viewModel.isLiked(it),
                 reviewCount = viewModel.reviewList.collectAsState().value.size,
                 onLikeToggle = { viewModel.toggleLike(it) },
-                onReviewClick = { viewModel.openReviewCard(clickData) },
+                onReviewClick = { viewModel.openReviewCard(clickData)},
                 onClose = { viewModel.clearClickList() },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
@@ -394,11 +377,12 @@ fun MapScreen(viewModel: MainViewModel) {
 }
 
 
+
 @Composable
 fun FilterModal(
     onClose: () -> Unit,
     onFilterApplied: (selectedDistance: String, selectedConditions: List<String>) -> Unit,
-    viewModel: MainViewModel = viewModel(),
+    viewModel: MainViewModel = viewModel()
 ) {
     val distances = listOf("1km", "2km", "4km", "10km")
     val conditions = listOf("입소 가능", "통학차량 여부", "놀이터 여부", "CCTV 여부")
@@ -483,7 +467,6 @@ fun NurseryDetailCard(
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
     modifier: Modifier = Modifier,
-
     onClose: () -> Unit
 
 ) {
