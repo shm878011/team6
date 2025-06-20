@@ -77,11 +77,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val CURRENT_LOCATION_LNG_KEY = "current_location_longitude"
     private val DEFAULT_LATITUDE = 37.5408
     private val DEFAULT_LONGITUDE = 127.0793
+    private val CURRENT_ADDRESS_KEY = "current_address_key"
+    private val DEFAULT_ADDRESS = "대한민국 서울특별시 광진구 능동로 120"
 
     var currentLocation by mutableStateOf<LatLng?>(null)
         private set
 
-    private val _addressText = MutableStateFlow("서울특별시 광진구 능동로 120 건국대학교")
+    private val _addressText = MutableStateFlow(DEFAULT_ADDRESS)
     val addressText: StateFlow<String> = _addressText
 
     fun updateLocation(latLng: LatLng) {
@@ -275,6 +277,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val savedLat = sharedPrefs.getFloat(CURRENT_LOCATION_LAT_KEY, DEFAULT_LATITUDE.toFloat()).toDouble()
         val savedLng = sharedPrefs.getFloat(CURRENT_LOCATION_LNG_KEY, DEFAULT_LONGITUDE.toFloat()).toDouble()
         currentLocation = LatLng(savedLat, savedLng)
+        val savedAddress = sharedPrefs.getString(CURRENT_ADDRESS_KEY, DEFAULT_ADDRESS) ?: DEFAULT_ADDRESS
+        _addressText.value = savedAddress // _addressText의 초기값으로 설정
+
+        // _addressText 변경 감지 및 SharedPreferences에 저장
+        viewModelScope.launch {
+            _addressText.collect { newAddress ->
+                with(sharedPrefs.edit()) {
+                    putString(CURRENT_ADDRESS_KEY, newAddress)
+                    apply()
+                }
+                Log.d(TAG, "주소 저장됨: $newAddress")
+            }
+        }
 
 
         val client = OkHttpClient.Builder()

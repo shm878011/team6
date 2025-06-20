@@ -196,7 +196,6 @@ fun MapScreen(viewModel: MainViewModel) {
     var loding by remember { mutableStateOf(false) }
     // 최초 진입 시 한 번만 CSV 로드
     LaunchedEffect(Unit) {
-
         viewModel.loadSchoolZones(context)
         scope.launch { // 비동기 작업을 위한 코루틴 스코프 시작
             viewModel.changedistance("-")
