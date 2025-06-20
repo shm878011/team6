@@ -116,7 +116,7 @@ class FirebaseAuthViewModel : ViewModel() {
     //로그아웃
     fun logout() {
         auth.signOut()
-        _authResult.value = "로그아웃 완료"
+        _authResult.value = ""
         _nickname.value = "비회원"
         _isGuest.value = true
     }

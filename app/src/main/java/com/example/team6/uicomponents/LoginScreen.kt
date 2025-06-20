@@ -45,6 +45,10 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     val authResult by viewModel.authResult.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.logout()        // ViewModel 상태 초기화
+        viewModel.checkLoginStatus()  // 상태 재확인 (선택 사항)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
