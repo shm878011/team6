@@ -230,9 +230,16 @@ fun MapScreen(viewModel: MainViewModel) {
                     showBottomSheet = checklist.isNotEmpty()
                 },
                 placeholder = { Text("검색") },
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(56.dp)
             )
 
             Icon(
