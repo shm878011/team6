@@ -47,9 +47,9 @@ fun FavoriteNurseriesScreen(
         isLoading = true
     }
 
-    SubPage(title = "찜한 유치원", navController = navController) {
+    SubPage(title = "관심 유치원", navController = navController) {
         if (favorites.isEmpty()) {
-            Text("찜한 유치원 없습니다.", color = Color.Gray)
+            Text("선택한 관심 유치원이 없습니다.", color = Color.Gray)
         } else {
             LazyColumn {
                 items(favorites) { nursery ->
