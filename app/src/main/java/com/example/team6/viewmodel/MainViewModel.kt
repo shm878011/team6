@@ -876,5 +876,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // 카메라 이동 관련 함수들
+    private var cameraMoveFunction: ((LatLng) -> Unit)? = null
+
+    fun setCameraMoveFunction(function: (LatLng) -> Unit) {
+        cameraMoveFunction = function
+    }
+
+    fun moveCameraToLocation(latLng: LatLng) {
+        cameraMoveFunction?.invoke(latLng)
+    }
 
 }

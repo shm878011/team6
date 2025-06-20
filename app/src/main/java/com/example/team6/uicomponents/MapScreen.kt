@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalNaverMapApi::class)
 @Composable
-fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
+fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel, onCameraMove: ((LatLng) -> Unit)? = null) {
     val defaultPosition = LatLng(37.5408, 127.0793)
     val currentPosition = viewModel.currentLocation ?: defaultPosition
 
@@ -60,7 +60,16 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
     val checklist by viewModel.checklist.collectAsState()
 
-
+    // 카메라 이동 함수를 외부에서 호출할 수 있도록 설정
+    LaunchedEffect(onCameraMove) {
+        onCameraMove?.let { moveFunction ->
+            viewModel.setCameraMoveFunction { latLng ->
+                cameraPositionState.move(
+                    CameraUpdate.toCameraPosition(CameraPosition(latLng, 15.0))
+                )
+            }
+        }
+    }
 
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
@@ -70,8 +79,6 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             trackingMode.value = LocationTrackingMode.None // 수동 위치 설정 시, 자동 추적 해제
         }
     }
-
-
 
     Box(modifier = modifier.fillMaxSize()) {
         //지도
@@ -193,7 +200,13 @@ fun MapScreen(viewModel: MainViewModel) {
             modifier = Modifier
                 .fillMaxSize()
         ){
-            NaverMapScreen(modifier = Modifier.fillMaxSize(),viewModel)
+            NaverMapScreen(
+                modifier = Modifier.fillMaxSize(), 
+                viewModel = viewModel,
+                onCameraMove = { latLng ->
+                    viewModel.moveCameraToLocation(latLng)
+                }
+            )
         }
 
         // 상단 검색/필터 바
@@ -236,6 +249,12 @@ fun MapScreen(viewModel: MainViewModel) {
                             NurseryListItem(kinderinfo = kinderinfo, onClick = {
                                 //clicklist = kinderinfo
                                 viewModel.setClickList(kinderinfo)
+                                
+                                // 카메라를 해당 유치원 위치로 이동
+                                if (kinderinfo.latitude != 0.0 && kinderinfo.longitude != 0.0) {
+                                    viewModel.moveCameraToLocation(LatLng(kinderinfo.latitude!!, kinderinfo.longitude!!))
+                                }
+                                
                                 scope.launch {
                                     scaffoldState.bottomSheetState.partialExpand()
                                 }
