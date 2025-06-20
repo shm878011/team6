@@ -68,7 +68,7 @@ fun EduDetailScreen(navController: NavController) {
 
         WebViewYoutubePlayer("https://www.youtube.com/watch?v=HqyV1uPWrfY")
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
 
         Text("1. 일관성 있는 규칙 설정", fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))

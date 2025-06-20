@@ -65,8 +65,7 @@ fun FoodDetailScreen(navController: NavController) {
 
         WebViewYoutubePlayer("https://www.youtube.com/watch?v=_7Luyv02YSc")
 
-
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
 
         Text("1. 정해진 시간에 식사하기 ️", fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
