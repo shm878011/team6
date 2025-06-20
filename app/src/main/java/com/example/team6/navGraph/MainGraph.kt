@@ -68,10 +68,10 @@ fun MainScreen(
                 InfoMainScreen(navController)
             }
 
-            composable("nap_detail")  { NapDetailScreen() }
-            composable("play_detail") { PlayDetailScreen() }
-            composable("food_detail") { FoodDetailScreen() }
-            composable("edu_detail") { EduDetailScreen() }
+            composable("nap_detail")  { NapDetailScreen(navController) }
+            composable("play_detail") { PlayDetailScreen(navController) }
+            composable("food_detail") { FoodDetailScreen(navController) }
+            composable("edu_detail") { EduDetailScreen(navController) }
 
 
             composable(BottomNavRoute.MyPage.route) {
