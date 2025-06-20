@@ -33,6 +33,9 @@ import java.io.InputStreamReader
 import java.nio.charset.Charset
 import kotlin.collections.List
 import kotlin.collections.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 
 import android.location.Location
 import android.util.Log.e
@@ -43,6 +46,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.flow.map
 
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -944,7 +948,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeReviewCard() {
         selectedReviewNursery.value = null
-        reviewList.value = emptyList()
     }
 
     fun submitReview(kinderName: String, text: String, rating: Int) {
@@ -983,6 +986,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 🔼 파일 상단 쪽
     val _myReviewList = MutableStateFlow<List<Review>>(emptyList())
     val myReviewList: StateFlow<List<Review>> = _myReviewList
+    val averageRating: StateFlow<Float> = reviewList
+        .map { list ->
+            if (list.isEmpty()) 0f else list.map { it.rating }.average().toFloat()
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0f)
 
     // 🔽 아래쪽 함수들 사이에 추가
     fun loadMyReviews() {
