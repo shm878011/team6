@@ -79,11 +79,13 @@ fun FavoriteNurseriesScreen(
                         nursery = clickData,
                         isLiked = viewModel.isLiked(it),
                         reviewCount = viewModel.reviewList.collectAsState().value.size,
+                        averageRating = viewModel.averageRating.collectAsState().value,
                         onLikeToggle = { viewModel.toggleLike(it) },
-                        onReviewClick = { viewModel.openReviewCard(clickData)},
+                        onReviewClick = { viewModel.openReviewCard(clickData) },
                         onClose = { viewModel.clearClickList() },
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
+
                 }
             }
         }

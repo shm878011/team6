@@ -396,12 +396,22 @@ fun MapScreen(viewModel: MainViewModel) {
             LaunchedEffect(sido, sgg, clicklist!!.kindername) {
                 viewModel.populateClickData(sido, sgg, clicklist!!.kindername)
             }
+            
+            // 🔥 clicklist가 변경될 때마다 해당 유치원의 리뷰를 로드
+            LaunchedEffect(clicklist!!.kindername) {
+                viewModel.loadReviews(clicklist!!.kindername)
+            }
+            
+            val reviewCount by viewModel.reviewList.collectAsState()
+            val averageRating by viewModel.averageRating.collectAsState()
+            
             NurseryDetailCard(
                 nursery = clickData,
                 isLiked = viewModel.isLiked(it),
-                reviewCount = viewModel.reviewList.collectAsState().value.size,
+                reviewCount = reviewCount.size,
+                averageRating = averageRating,
                 onLikeToggle = { viewModel.toggleLike(it) },
-                onReviewClick = { viewModel.openReviewCard(clickData)},
+                onReviewClick = { viewModel.openReviewCard(clickData) },
                 onClose = { viewModel.clearClickList() },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
@@ -503,6 +513,7 @@ fun NurseryDetailCard(
     nursery: Click,
     isLiked: Boolean,
     reviewCount: Int,
+    averageRating:Float,
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -532,10 +543,34 @@ fun NurseryDetailCard(
             Text(nursery.phone.toString())
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row {
-                Text("리뷰 $reviewCount", color = Color.Blue,
-                    modifier = Modifier.clickable { onReviewClick() })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "리뷰 ${reviewCount}",
+                    color = Color.Blue,
+                    modifier = Modifier.clickable { onReviewClick() }
+                )
+
+                if (averageRating > 0f) {
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // 별점으로 평균 표현
+                    val fullStars = averageRating.toInt()
+                    val hasHalfStar = (averageRating - fullStars) >= 0.5f
+
+                    Row {
+                        repeat(fullStars) {
+                            Text("★", color = Color(0xFFFFC107))
+                        }
+                        if (hasHalfStar) {
+                            Text("★", color = Color(0x80FFC107)) // 반별 효과: 투명도 적용
+                        }
+                        repeat(5 - fullStars - if (hasHalfStar) 1 else 0) {
+                            Text("★", color = Color.LightGray)
+                        }
+                    }
+                }
             }
+
 
             Row {
                 Text("CCTV: ${nursery.cctv_ist_total}", modifier = Modifier.weight(1f))
