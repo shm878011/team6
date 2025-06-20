@@ -112,6 +112,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     var sgg = ""
                     for ((sidoCandidate, sggCandidate) in nameToMapCode) {
                             if (addressText.value.contains(sidoCandidate.first) && _addressText.value.contains(sidoCandidate.second)) {
+                                Log.d(TAG, "${addressText.value} ${sidoCandidate}")
                                 sido = sidoCandidate.first
                                 sgg = sidoCandidate.second
                                 break
@@ -302,9 +303,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val tempSidoSggMap = mutableMapOf<String, MutableList<String>>()
 
                 val rowIterator = sheet.iterator()
-                if (rowIterator.hasNext()) {
-                    rowIterator.next() // 헤더 스킵
-                }
 
                 while (rowIterator.hasNext()) {
                     val row = rowIterator.next()
