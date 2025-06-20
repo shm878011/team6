@@ -63,7 +63,7 @@ fun MyReviewItem(review: Review, onDelete: () -> Unit) {
 
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row {
-            Text(review.nickname)
+            Text(review.kinderName)
             Spacer(modifier = Modifier.weight(1f))
 
             Row {

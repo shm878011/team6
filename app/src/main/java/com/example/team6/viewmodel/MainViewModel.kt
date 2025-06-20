@@ -1050,7 +1050,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 nickname = nickname,
                 text = text,
                 rating = rating,
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                kinderName = kinderName
             )
 
             val safeName = kinderName.replace(".", "_").replace("/", "_")  // 중요
