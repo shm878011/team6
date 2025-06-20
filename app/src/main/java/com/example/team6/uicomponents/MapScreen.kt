@@ -106,7 +106,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel, onCa
 
             // 필터링된 유치원들 마커로 표시
             checklist.forEach { kindergarten ->
-                // 🔥 checklist에서 이미 유효한 좌표만 필터링했으므로 모든 항목을 마커로 표시
+                // checklist에서 이미 유효한 좌표만 필터링했으므로 모든 항목을 마커로 표시
                 Marker(
                     state = rememberMarkerState(position = LatLng(kindergarten.latitude!!, kindergarten.longitude!!)),
                     captionText = kindergarten.kindername,
@@ -180,7 +180,7 @@ fun MapScreen(viewModel: MainViewModel) {
     var query by remember { mutableStateOf("") }
     var filteredNurseries by remember { mutableStateOf<List<Nursery>>(emptyList()) }
     var showBottomSheet by remember { mutableStateOf(false) }
-    // 🔥 상태 업데이트 강제 트리거용
+    // 상태 업데이트 강제 트리거용
     var forceUpdate by remember { mutableStateOf(0) }
 
     val likedNurseries = viewModel.likedNurseries
@@ -232,7 +232,7 @@ fun MapScreen(viewModel: MainViewModel) {
             modifier = Modifier
                 .fillMaxSize()
         ){
-            // 🔥 forceUpdate로 강제 리컴포지션
+            // forceUpdate로 강제 리컴포지션
             key(forceUpdate) {
                 if (loding)
                 {
@@ -285,7 +285,7 @@ fun MapScreen(viewModel: MainViewModel) {
 
         // 💡 조건부로 BottomSheet 띄우기
         if (checklist.isNotEmpty() && showBottomSheet) {
-            // 🔥 forceUpdate로 강제 리컴포지션
+            // forceUpdate로 강제 리컴포지션
             key(forceUpdate) {
                 BottomSheetScaffold(
                     scaffoldState = scaffoldState,
@@ -369,7 +369,7 @@ fun MapScreen(viewModel: MainViewModel) {
 
                         viewModel.updateChecklist()
                         
-                        // 🔥 상태 업데이트 강제 트리거
+                        // 상태 업데이트 강제 트리거
                         showBottomSheet = false
                         delay(100) // 잠시 대기
                         showBottomSheet = checklist.isNotEmpty()
@@ -397,7 +397,7 @@ fun MapScreen(viewModel: MainViewModel) {
                 viewModel.populateClickData(sido, sgg, clicklist!!.kindername)
             }
             
-            // 🔥 clicklist가 변경될 때마다 해당 유치원의 리뷰를 로드
+            // clicklist가 변경될 때마다 해당 유치원의 리뷰를 로드
             LaunchedEffect(clicklist!!.kindername) {
                 viewModel.loadReviews(clicklist!!.kindername)
             }

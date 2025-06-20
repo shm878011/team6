@@ -31,22 +31,44 @@ class FirebaseAuthViewModel : ViewModel() {
             _nickname.value = "비회원"
         }
     }
+
+    // 🔥 회원가입 입력값 검증 함수
+    fun validateSignupInput(email: String, password: String, confirmPassword: String, nickname: String): String? {
+        return when {
+            email.trim().isEmpty() -> "이메일을 입력해주세요"
+            password.trim().isEmpty() -> "비밀번호를 입력해주세요"
+            confirmPassword.trim().isEmpty() -> "비밀번호 확인을 입력해주세요"
+            nickname.trim().isEmpty() -> "닉네임을 입력해주세요"
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> "올바른 이메일 형식을 입력해주세요"
+            password.length < 6 -> "비밀번호는 6자 이상이어야 합니다"
+            password != confirmPassword -> "비밀번호가 일치하지 않습니다"
+            else -> null
+        }
+    }
+
     // 회원가입
     fun signup(email: String, password: String, nickname: String) {
-        auth.createUserWithEmailAndPassword(email, password)
+        // 🔥 입력값 검증
+        val validationError = validateSignupInput(email, password, password, nickname)
+        if (validationError != null) {
+            _authResult.value = validationError
+            return
+        }
+        
+        auth.createUserWithEmailAndPassword(email.trim(), password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
 
                     // ✅ displayName 설정 추가
                     val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                        .setDisplayName(nickname)
+                        .setDisplayName(nickname.trim())
                         .build()
 
                     user?.updateProfile(profileUpdates)
                         ?.addOnCompleteListener { updateTask ->
                             if (updateTask.isSuccessful) {
-                                saveNicknameToDatabase(nickname)
+                                saveNicknameToDatabase(nickname.trim())
                                 _authResult.value = "회원가입 성공"
                                 _isGuest.value = false
                             } else {
@@ -59,9 +81,27 @@ class FirebaseAuthViewModel : ViewModel() {
             }
     }
 
+    // 🔥 입력값 검증 함수
+    fun validateLoginInput(email: String, password: String): String? {
+        return when {
+            email.trim().isEmpty() -> "이메일을 입력해주세요"
+            password.trim().isEmpty() -> "비밀번호를 입력해주세요"
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> "올바른 이메일 형식을 입력해주세요"
+            password.length < 6 -> "비밀번호는 6자 이상이어야 합니다"
+            else -> null
+        }
+    }
+
     // 로그인
     fun login(email: String, password: String) {
-        auth.signInWithEmailAndPassword(email, password)
+        // 🔥 입력값 검증
+        val validationError = validateLoginInput(email, password)
+        if (validationError != null) {
+            _authResult.value = validationError
+            return
+        }
+        
+        auth.signInWithEmailAndPassword(email.trim(), password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = "로그인 성공"
