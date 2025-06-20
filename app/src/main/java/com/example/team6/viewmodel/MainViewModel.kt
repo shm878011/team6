@@ -61,8 +61,89 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     var Rangelocation: Double = -10.0
 
+    // 🔥 찜한 목록을 SharedPreferences에 저장하기 위한 키
+    private val LIKED_NURSERIES_KEY = "liked_nurseries"
 
     val likedNurseries = mutableStateListOf<KinderInfo>()
+
+    // 🔥 찜한 목록을 SharedPreferences에 저장 (사용자별)
+    private fun saveLikedNurseries() {
+        val user = FirebaseAuth.getInstance().currentUser
+        // 🔥 비회원일 때는 저장하지 않음
+        if (user == null) return
+        
+        val userId = user.uid
+        val likedNames = likedNurseries.map { it.kindername }.toSet()
+        sharedPrefs.edit().putStringSet("${LIKED_NURSERIES_KEY}_$userId", likedNames).apply()
+    }
+
+    // 🔥 SharedPreferences에서 찜한 목록 불러오기 (사용자별)
+    private fun loadLikedNurseries() {
+        try {
+            val user = FirebaseAuth.getInstance().currentUser
+            // 🔥 비회원일 때는 찜한 목록을 로드하지 않음
+            if (user == null) return
+            
+            val userId = user.uid
+            val likedNames = sharedPrefs.getStringSet("${LIKED_NURSERIES_KEY}_$userId", emptySet()) ?: emptySet()
+            // 현재 로드된 유치원 목록에서 찜한 유치원들을 찾아서 추가
+            if (_kindergartenList.value.isNotEmpty()) {
+                viewModelScope.launch {
+                    _kindergartenList.value.forEach { kinderInfo ->
+                        if (likedNames.contains(kinderInfo.kindername)) {
+                            if (!likedNurseries.contains(kinderInfo)) {
+                                likedNurseries.add(kinderInfo)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainViewModel", "찜한 목록 로드 중 오류: ${e.message}")
+        }
+    }
+
+    // 🔥 유치원 목록이 업데이트될 때 찜한 목록도 업데이트
+    fun updateLikedNurseriesFromCurrentList() {
+        try {
+            val user = FirebaseAuth.getInstance().currentUser
+            // 🔥 비회원일 때는 찜한 목록을 업데이트하지 않음
+            if (user == null) return
+            
+            val userId = user.uid
+            val likedNames = sharedPrefs.getStringSet("${LIKED_NURSERIES_KEY}_$userId", emptySet()) ?: emptySet()
+            likedNurseries.clear()
+            _kindergartenList.value.forEach { kinderInfo ->
+                if (likedNames.contains(kinderInfo.kindername)) {
+                    likedNurseries.add(kinderInfo)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainViewModel", "찜한 목록 업데이트 중 오류: ${e.message}")
+        }
+    }
+
+    // 🔥 로그아웃 시 찜한 목록 초기화
+    fun clearLikedNurseries() {
+        likedNurseries.clear()
+    }
+
+    // 🔥 사용자 변경 시 찜한 목록 새로 로드
+    fun onUserChanged() {
+        val user = FirebaseAuth.getInstance().currentUser
+        Log.d("MainViewModel", "사용자 변경 감지: ${user?.uid ?: "비회원"}")
+        
+        if (user == null) {
+            // 🔥 비회원일 때는 찜한 목록 완전 초기화
+            Log.d("MainViewModel", "비회원으로 변경 - 찜한 목록 초기화")
+            clearLikedNurseries()
+        } else {
+            // 🔥 회원일 때만 해당 사용자의 찜한 목록 로드
+            Log.d("MainViewModel", "회원으로 변경 - 찜한 목록 로드: ${user.uid}")
+            clearLikedNurseries()
+            loadLikedNurseries()
+        }
+    }
 
     fun toggleLike(nursery: KinderInfo) {
         if (likedNurseries.contains(nursery)) {
@@ -70,6 +151,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             likedNurseries.add(nursery)
         }
+        // 🔥 찜한 목록 변경 시 SharedPreferences에 저장
+        saveLikedNurseries()
     }
 
     fun isLiked(nursery: KinderInfo): Boolean {
@@ -633,6 +716,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             _checklist.value = newChecklist
             Log.d(TAG, "최종 Checklist 업데이트 완료: ${newChecklist.size}개 유치원.")
+            
+            // 🔥 유치원 목록이 업데이트된 후 찜한 목록도 함께 업데이트 (안전하게)
+            try {
+                updateLikedNurseriesFromCurrentList()
+            } catch (e: Exception) {
+                Log.e(TAG, "찜한 목록 업데이트 중 오류: ${e.message}")
+            }
         }
     }
 

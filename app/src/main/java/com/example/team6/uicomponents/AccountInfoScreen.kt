@@ -18,11 +18,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.team6.model.UserInfo
 import com.example.team6.viewmodel.AccountInfoViewModel
 import com.example.team6.viewmodel.FirebaseAuthViewModel
+import com.example.team6.viewmodel.MainViewModel
 
 @Composable
 fun AccountInfoScreen(
     navController: NavController,
     viewModel: FirebaseAuthViewModel = viewModel(),
+    mainViewModel: MainViewModel,
     onLogout: () -> Unit
 ) {
     val userInfo = viewModel.getUserInfo()
@@ -59,6 +61,8 @@ fun AccountInfoScreen(
 
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             TextButton(onClick = {
+                // 🔥 로그아웃 시 MainViewModel의 찜한 목록도 초기화
+                mainViewModel.clearLikedNurseries()
                 viewModel.logout()        // ViewModel 상태 초기화
                 viewModel.checkLoginStatus()  // 상태 재확인 (선택 사항)
                 onLogout()  // NavController.popBackStack() 등 상위 화면 이동 처리

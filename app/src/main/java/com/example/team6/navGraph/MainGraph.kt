@@ -81,8 +81,8 @@ fun MainScreen(
                 AccountInfoScreen(
                     navController = navController,
                     viewModel = authViewModel,
+                    mainViewModel = viewModel,
                     onLogout = onLogout
-
                 )
             }
 

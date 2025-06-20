@@ -77,12 +77,20 @@ fun FavoriteNurseriesScreen(
                 LaunchedEffect(sido, sgg, clicklist!!.kindername) {
                     viewModel.populateClickData(sido, sgg, clicklist!!.kindername)
                 }
+                
+                LaunchedEffect(clicklist!!.kindername) {
+                    viewModel.loadReviews(clicklist!!.kindername)
+                }
+                
+                val reviewCount by viewModel.reviewList.collectAsState()
+                val averageRating by viewModel.averageRating.collectAsState()
+                
                 Box(modifier = Modifier.fillMaxSize()) {
                     NurseryDetailCard(
                         nursery = clickData,
                         isLiked = viewModel.isLiked(it),
-                        reviewCount = viewModel.reviewList.collectAsState().value.size,
-                        averageRating = viewModel.averageRating.collectAsState().value,
+                        reviewCount = reviewCount.size,
+                        averageRating = averageRating,
                         onLikeToggle = { viewModel.toggleLike(it) },
                         onReviewClick = { viewModel.openReviewCard(clickData) },
                         onClose = { viewModel.clearClickList() },
