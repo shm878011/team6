@@ -63,8 +63,6 @@ fun AccountInfoScreen(
             TextButton(onClick = {
                 // 🔥 로그아웃 시 MainViewModel의 찜한 목록도 초기화
                 mainViewModel.clearLikedNurseries()
-                viewModel.logout()        // ViewModel 상태 초기화
-                viewModel.checkLoginStatus()  // 상태 재확인 (선택 사항)
                 onLogout()  // NavController.popBackStack() 등 상위 화면 이동 처리
             }) {
                 Text("로그아웃", fontSize = 14.sp)
