@@ -42,10 +42,6 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
-
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -241,7 +237,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         current = 0,
         staffCount = 0,
         vhcl_oprn_yn = "",
-        homepage = ""
+        homepage = "",
+        time = ""
     ))
     val clickdata: StateFlow<Click> = _clickdata
 
@@ -379,7 +376,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.Main) {
                     _kindergartenList.value = kindergartens
                     Log.d(TAG, "CSV 파일 로드 완료, 총 ${kindergartens.size}개 유치원 데이터")
-                    updateChecklist()
+                    updateCheckList1()
                 }
 
             } catch (e: Exception) {
@@ -399,23 +396,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val (sidoCode, sggCode) = codes
-        try {
-            val response = kindergartenApiService.getKindergartenBasicInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val (sidoCode, initialSggCode) = codes // initialSggCode는 첫 호출 시 사용되지만, 모든 SGG를 가져올 때 필요 없음
 
-            if (response.status == "SUCCESS") {
-                Log.d(TAG, "API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${response.kinderInfo?.size ?: 0}")
-                _kindergartenBasicList.value = response.kinderInfo ?: emptyList()
-            } else {
-                Log.e(TAG, "API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
-                _kindergartenBasicList.value = emptyList()
-            }
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-        } catch (e: Exception) {
-            Log.e(TAG, "네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _kindergartenBasicList.value = emptyList()
+            return
         }
+
+        val allBasicInfo = mutableListOf<BasicInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<BasicInfo>>>()
+
+        // 각 sggCode에 대해 API 호출을 비동기적으로 시작
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenBasicInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        Log.d(TAG, "API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${response.kinderInfo?.size ?: 0}")
+                        response.kinderInfo ?: emptyList()
+                    } else {
+                        Log.e(TAG, "API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        // 모든 비동기 호출이 완료될 때까지 기다리고 결과를 취합
+        val results = deferredCalls.awaitAll()
+        results.forEach { allBasicInfo.addAll(it) }
+
+        _kindergartenBasicList.value = allBasicInfo.distinctBy { it.kindercode } // 중복 제거 (유치원 코드 기준)
+        Log.d(TAG, "모든 시군구 데이터 로드 완료, 총 ${_kindergartenBasicList.value.size}개 유치원 데이터")
     }
+
 
 
     fun getSidoSggCodesByName(sidoName: String, sggName: String): Pair<String, String>? {
@@ -426,30 +446,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val codes = getSidoSggCodesByName(sidoName, sggName)
         if (codes == null) {
             Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
-            _schoolBusKindergartens.value = emptyList() // StateFlow 업데이트 (withContext 불필요)
+            _schoolBusKindergartens.value = emptyList()
             return
         }
 
-        val (sidoCode, sggCode) = codes
+        val (sidoCode, initialSggCode) = codes // initialSggCode는 첫 호출 시 사용되지만, 모든 SGG를 가져올 때 필요 없음
 
-        try {
-            val response = kindergartenApiService.getKindergartenSchoolBusInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-            if (response.status == "SUCCESS") {
-                val filteredList = response.schoolBusInfo
-                    ?.filterNotNull()
-                    ?.filter { it.vhcl_oprn_yn == "Y" }
-                    ?: emptyList()
-
-                _schoolBusKindergartens.value = filteredList
-                Log.d(TAG, "통학차량('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredList.size}")
-            } else {
-                Log.e(TAG, "통학차량 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                _schoolBusKindergartens.value = emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "통학차량 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _schoolBusKindergartens.value = emptyList()
+            return
+        }
+
+        val allSchoolBusInfo = mutableListOf<SchoolBusInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<SchoolBusInfo>>>()
+
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenSchoolBusInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        val filteredList = response.schoolBusInfo
+                            ?.filterNotNull()
+                            ?.filter { it.vhcl_oprn_yn == "Y" }
+                            ?: emptyList()
+                        Log.d(TAG, "통학차량 API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${filteredList.size}")
+                        filteredList
+                    } else {
+                        Log.e(TAG, "통학차량 API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "통학차량 API 네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        val results = deferredCalls.awaitAll()
+        results.forEach { allSchoolBusInfo.addAll(it) }
+
+        _schoolBusKindergartens.value = allSchoolBusInfo.distinctBy { it.kindercode } // 중복 제거
+        Log.d(TAG, "모든 시군구 통학차량 데이터 로드 완료, 총 ${_schoolBusKindergartens.value.size}개 유치원 데이터")
+    }
+
+
+    fun updateCheckList1(){
+        viewModelScope.launch {
+            Log.d(TAG, "시작")
+            var newChecklist: List<KinderInfo> = kindergartenList.value
+            _checklist.value = newChecklist
+            Log.d(TAG, "최종 Checklist 업데이트 완료: ${newChecklist.size}개 유치원.")
         }
     }
 
@@ -499,6 +548,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Pair(kinderInfo.kindername, kinderInfo.addr) in CHANGE
                 }
             }
+            else{
+                newChecklist = emptyList()
+            }
 
             if(newChecklist.isNotEmpty() && _Canadmission){
                 newChecklist = newChecklist.filter { KinderInfo->
@@ -540,28 +592,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val (sidoCode, sggCode) = codes
+        val (sidoCode, initialSggCode) = codes
 
-        try {
-            val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-            if (response.status == "SUCCESS") {
-                val filteredAndSummarizedList = response.safeInfo
-                    ?.filterNotNull()
-                    ?.filter { it.plyg_ck_yn == "Y" }
-                    ?: emptyList()
-
-                _kindergartensWithSafePlayground.value = filteredAndSummarizedList
-                Log.d(TAG, "놀이터 안전점검('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}")
-            } else {
-                Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                _kindergartensWithSafePlayground.value = emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _kindergartensWithSafePlayground.value = emptyList()
+            return
         }
+
+        val allSafePlaygroundInfo = mutableListOf<SafeInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<SafeInfo>>>()
+
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        val filteredAndSummarizedList = response.safeInfo
+                            ?.filterNotNull()
+                            ?.filter { it.plyg_ck_yn == "Y" }
+                            ?: emptyList()
+                        Log.d(TAG, "놀이터 안전점검 API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${filteredAndSummarizedList.size}")
+                        filteredAndSummarizedList
+                    } else {
+                        Log.e(TAG, "안전 정보 API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        val results = deferredCalls.awaitAll()
+        results.forEach { allSafePlaygroundInfo.addAll(it) }
+
+        _kindergartensWithSafePlayground.value = allSafePlaygroundInfo.distinctBy { it.kindercode } // 중복 제거
+        Log.d(TAG, "모든 시군구 놀이터 안전점검 데이터 로드 완료, 총 ${_kindergartensWithSafePlayground.value.size}개 유치원 데이터")
     }
+
 
     suspend fun fetchKindergartensWithSafeCCTV(sidoName: String, sggName: String) {
         val codes = getSidoSggCodesByName(sidoName, sggName)
@@ -571,28 +643,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val (sidoCode, sggCode) = codes
+        val (sidoCode, initialSggCode) = codes
 
-        try {
-            val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-            if (response.status == "SUCCESS") {
-                val filteredAndSummarizedList = response.safeInfo
-                    ?.filterNotNull()
-                    ?.filter { it.cctv_ist_yn == "Y" }
-                    ?: emptyList()
-
-                _kindergartensWithCCTV.value = filteredAndSummarizedList
-                Log.d(TAG, "CCTV('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}") // 로그 메시지 수정
-            } else {
-                Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                _kindergartensWithCCTV.value = emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _kindergartensWithCCTV.value = emptyList()
+            return
         }
+
+        val allSafeCCTVInfo = mutableListOf<SafeInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<SafeInfo>>>()
+
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        val filteredAndSummarizedList = response.safeInfo
+                            ?.filterNotNull()
+                            ?.filter { it.cctv_ist_yn == "Y" }
+                            ?: emptyList()
+                        Log.d(TAG, "CCTV API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${filteredAndSummarizedList.size}")
+                        filteredAndSummarizedList
+                    } else {
+                        Log.e(TAG, "안전 정보 API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        val results = deferredCalls.awaitAll()
+        results.forEach { allSafeCCTVInfo.addAll(it) }
+
+        _kindergartensWithCCTV.value = allSafeCCTVInfo.distinctBy { it.kindercode } // 중복 제거
+        Log.d(TAG, "모든 시군구 CCTV 데이터 로드 완료, 총 ${_kindergartensWithCCTV.value.size}개 유치원 데이터")
     }
+
 
     fun populateClickData(sidoName: String, sggName: String, kindername: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -613,7 +705,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         current = 0,
                         staffCount = 0,
                         vhcl_oprn_yn = "정보 없음",
-                        homepage = "홈페이지 정보 없음"
+                        homepage = "홈페이지 정보 없음",
+                        time = "운영시간 정보 없음"
                     )
                 }
                 return@launch
@@ -643,6 +736,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var clickStaffCount = 0
             var clickVhclOprnYn = "N"
             var clickHomepage = basicKinderInfo?.hpaddr ?: "홈페이지 정보 없음"
+            var clickTime = basicKinderInfo?.hpaddr ?: "운영시간 정보 없음"
 
             val safeInfoDeferred = async {
                 try {
@@ -719,7 +813,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     current = clickCurrentStudents,
                     staffCount = clickStaffCount,
                     vhcl_oprn_yn = clickVhclOprnYn,
-                    homepage = clickHomepage
+                    homepage = clickHomepage,
+                    time = clickTime
                 )
                 Log.d(TAG, "ClickData 업데이트 완료: $_clickdata.value")
             }
@@ -775,13 +870,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val reviewList = MutableStateFlow<List<Review>>(emptyList())
     val selectedReviewNursery = MutableStateFlow<Click?>(null)
 
-    // 🔽 여기 추가
-    val averageRating: StateFlow<Float> = reviewList
-        .map { list ->
-            if (list.isEmpty()) 0f else list.map { it.rating }.average().toFloat()
-        }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0f)
-
     fun loadReviews(kinderCode: String) {
         val db = FirebaseDatabase.getInstance().getReference("reviews").child(kinderCode)
         db.addValueEventListener(object : ValueEventListener {
@@ -805,6 +893,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeReviewCard() {
         selectedReviewNursery.value = null
+        reviewList.value = emptyList()
     }
 
     fun submitReview(kinderName: String, text: String, rating: Int) {

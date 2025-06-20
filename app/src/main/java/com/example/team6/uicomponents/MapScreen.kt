@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalNaverMapApi::class)
 @Composable
-fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
+fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel, onCameraMove: ((LatLng) -> Unit)? = null) {
     val defaultPosition = LatLng(37.5408, 127.0793)
     val currentPosition = viewModel.currentLocation ?: defaultPosition
 
@@ -60,7 +60,16 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
     val checklist by viewModel.checklist.collectAsState()
 
-
+    // 카메라 이동 함수를 외부에서 호출할 수 있도록 설정
+    LaunchedEffect(onCameraMove) {
+        onCameraMove?.let { moveFunction ->
+            viewModel.setCameraMoveFunction { latLng ->
+                cameraPositionState.move(
+                    CameraUpdate.toCameraPosition(CameraPosition(latLng, 15.0))
+                )
+            }
+        }
+    }
 
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
@@ -70,8 +79,6 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             trackingMode.value = LocationTrackingMode.None // 수동 위치 설정 시, 자동 추적 해제
         }
     }
-
-
 
     Box(modifier = modifier.fillMaxSize()) {
         //지도
@@ -149,31 +156,25 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
 
         // 커스텀 내 위치 버튼
-        IconButton(
-            onClick = {
-                val targetPosition = viewModel.currentLocation ?: defaultPosition
-                cameraPositionState.move(
-                    CameraUpdate.toCameraPosition(
-                        CameraPosition(
-                            targetPosition,
-                            15.0
-                        )
-                    )
+
+            IconButton(
+                onClick = {
+                    val targetPosition = viewModel.currentLocation ?: defaultPosition
+                    cameraPositionState.move(CameraUpdate.toCameraPosition(CameraPosition(targetPosition, 15.0)))
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+                    .background(Color.White, shape = CircleShape)
+                    .size(48.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_my_location_24),
+                    contentDescription = "내 위치로 이동",
+                    tint = Color.Black
                 )
-            },
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-                .background(Color.White, shape = CircleShape)
-                .size(48.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.baseline_my_location_24),
-                contentDescription = "내 위치로 이동",
-                tint = Color.Black
-            )
+            }
         }
-    }
 }
 
 
@@ -210,8 +211,14 @@ fun MapScreen(viewModel: MainViewModel) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-        ) {
-            NaverMapScreen(modifier = Modifier.fillMaxSize(), viewModel)
+        ){
+            NaverMapScreen(
+                modifier = Modifier.fillMaxSize(), 
+                viewModel = viewModel,
+                onCameraMove = { latLng ->
+                    viewModel.moveCameraToLocation(latLng)
+                }
+            )
         }
 
         // 상단 검색/필터 바
@@ -260,6 +267,12 @@ fun MapScreen(viewModel: MainViewModel) {
                             NurseryListItem(kinderinfo = kinderinfo, onClick = {
                                 //clicklist = kinderinfo
                                 viewModel.setClickList(kinderinfo)
+                                
+                                // 카메라를 해당 유치원 위치로 이동
+                                if (kinderinfo.latitude != 0.0 && kinderinfo.longitude != 0.0) {
+                                    viewModel.moveCameraToLocation(LatLng(kinderinfo.latitude!!, kinderinfo.longitude!!))
+                                }
+                                
                                 scope.launch {
                                     scaffoldState.bottomSheetState.partialExpand()
                                 }
@@ -360,13 +373,11 @@ fun MapScreen(viewModel: MainViewModel) {
             }
             LaunchedEffect(sido, sgg, clicklist!!.kindername) {
                 viewModel.populateClickData(sido, sgg, clicklist!!.kindername)
-                viewModel.loadReviews(clicklist!!.kindername)
             }
             NurseryDetailCard(
                 nursery = clickData,
                 isLiked = viewModel.isLiked(it),
                 reviewCount = viewModel.reviewList.collectAsState().value.size,
-                averageRating = viewModel.averageRating.collectAsState().value,
                 onLikeToggle = { viewModel.toggleLike(it) },
                 onReviewClick = { viewModel.openReviewCard(clickData) },
                 onClose = { viewModel.clearClickList() },
@@ -469,11 +480,12 @@ fun NurseryDetailCard(
     nursery: Click,
     isLiked: Boolean,
     reviewCount: Int,
-    averageRating: Float,
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onClose: () -> Unit,
+
+    onClose: () -> Unit
+
 ) {
     Card(
         modifier = modifier.padding(16.dp),
@@ -498,32 +510,9 @@ fun NurseryDetailCard(
             Text(nursery.phone.toString())
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "리뷰 " + reviewCount,
-                    color = Color.Blue,
-                    modifier = Modifier.clickable { onReviewClick() }
-                )
-
-                if (averageRating > 0f) {
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // 별점으로 평균 표현
-                    val fullStars = averageRating.toInt()
-                    val hasHalfStar = (averageRating - fullStars) >= 0.5f
-
-                    Row {
-                        repeat(fullStars) {
-                            Text("★", color = Color(0xFFFFC107))
-                        }
-                        if (hasHalfStar) {
-                            Text("★", color = Color(0x80FFC107)) // 반별 효과: 투명도 적용
-                        }
-                        repeat(5 - fullStars - if (hasHalfStar) 1 else 0) {
-                            Text("★", color = Color.LightGray)
-                        }
-                    }
-                }
+            Row {
+                Text("리뷰 $reviewCount", color = Color.Blue,
+                    modifier = Modifier.clickable { onReviewClick() })
             }
 
             Row {
