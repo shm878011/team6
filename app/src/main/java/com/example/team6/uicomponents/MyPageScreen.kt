@@ -69,7 +69,7 @@ fun MyPageScreen(navController: NavController,
         // 메뉴 항목들 (단순 리스트 형태)
         MenuTextItem("계정 정보") { navController.navigate("account_info") }
         MenuTextItem("내 리뷰 보기") { navController.navigate("my_reviews") }
-        MenuTextItem("관심 어린이집 보기") { navController.navigate("favorite_nurseries") }
+        MenuTextItem("관심 유치원 보기") { navController.navigate("favorite_nurseries") }
         MenuTextItem("위치 설정") { navController.navigate("location_setting") }
     }
 }

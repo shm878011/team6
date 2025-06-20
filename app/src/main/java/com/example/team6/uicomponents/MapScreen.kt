@@ -184,6 +184,7 @@ fun MapScreen(viewModel: MainViewModel) {
     var forceUpdate by remember { mutableStateOf(0) }
 
     val likedNurseries = viewModel.likedNurseries
+    val selectedReviewKinder = viewModel.selectedReviewNursery.collectAsState().value
 
     val kindergartenList by viewModel.kindergartenList.collectAsState()
     val checklist by viewModel.checklist.collectAsState()
@@ -196,6 +197,8 @@ fun MapScreen(viewModel: MainViewModel) {
     var loding by remember { mutableStateOf(false) }
     // 최초 진입 시 한 번만 CSV 로드
     LaunchedEffect(Unit) {
+        viewModel.closeReviewCard()
+        viewModel.clearClickList()
         viewModel.loadSchoolZones(context)
         scope.launch { // 비동기 작업을 위한 코루틴 스코프 시작
             viewModel.changedistance("-")
@@ -416,8 +419,6 @@ fun MapScreen(viewModel: MainViewModel) {
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
-
-        val selectedReviewKinder = viewModel.selectedReviewNursery.collectAsState().value
         if (selectedReviewKinder != null) {
             ReviewCardBottomSheet(viewModel = viewModel)
         }

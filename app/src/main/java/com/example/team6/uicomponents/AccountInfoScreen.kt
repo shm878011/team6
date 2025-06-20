@@ -44,15 +44,15 @@ fun AccountInfoScreen(
                 Text("비회원입니다", style = MaterialTheme.typography.bodyLarge)
             } else {
                 Text("이름: ${userInfo.name}", fontSize = 14.sp)
-                Text("아이디: ${userInfo.username}", fontSize = 14.sp)
 
-                Text("이메일:", fontSize = 14.sp)
-                Text(
-                    userInfo.email,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 16.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) { // Text들을 세로 중앙 정렬
+                    Text("이메일: ", fontSize = 14.sp) // "이메일: "까지 한 Text로 합칩니다.
+                    Text(
+                        userInfo.email,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
                 Text("비밀번호: ${userInfo.passwordMasked}", fontSize = 14.sp)
             }
         }

@@ -34,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.example.team6.uicomponents.NurseryDetailCard
 import com.example.team6.uicomponents.NurseryListItem
+import com.example.team6.uicomponents.ReviewCardBottomSheet
 
 
 @SuppressLint("CoroutineCreationDuringComposition")
@@ -48,9 +49,12 @@ fun ResultScreen(
     viewModel: MainViewModel
 ) {
     var isLoading by remember { mutableStateOf(false) }
+    val selectedReviewKinder = viewModel.selectedReviewNursery.collectAsState().value
+
 
     LaunchedEffect(Unit) {
         viewModel.clearClickList()
+        viewModel.closeReviewCard()
         isLoading = true
     }
     val clicklist by viewModel.clicklist.collectAsState()
@@ -120,7 +124,7 @@ fun ResultScreen(
             .padding(16.dp)
     ) {
         Text(
-            text = "어린이집 추천 결과",
+            text = "유치원 추천 결과",
             fontSize = 20.sp,
             modifier = Modifier.padding(bottom = 16.dp)
         )
@@ -169,6 +173,9 @@ fun ResultScreen(
 
             }
         }
+    }
+    if (selectedReviewKinder != null) {
+        ReviewCardBottomSheet(viewModel = viewModel)
     }
 }
 
