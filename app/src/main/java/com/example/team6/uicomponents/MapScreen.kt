@@ -28,6 +28,7 @@ import com.example.team6.R
 import com.example.team6.model.Click
 import com.example.team6.model.KinderInfo
 import com.example.team6.model.Nursery
+import com.example.team6.ui.theme.PurpleGrey40
 import com.example.team6.viewmodel.MainViewModel
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.CameraPosition
@@ -545,7 +546,8 @@ fun NurseryDetailCard(
     ) {
     Card(
         modifier = modifier.padding(16.dp),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PurpleGrey40)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
