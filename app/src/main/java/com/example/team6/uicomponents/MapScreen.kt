@@ -265,7 +265,13 @@ fun MapScreen(viewModel: MainViewModel) {
                 placeholder = { Text("검색") },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(56.dp)
+                    .background(Color.White, shape = RoundedCornerShape(12.dp)),
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                )
             )
 
             Icon(

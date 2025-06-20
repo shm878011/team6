@@ -784,7 +784,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var clickStaffCount = 0
             var clickVhclOprnYn = "N"
             var clickHomepage = basicKinderInfo?.hpaddr ?: "홈페이지 정보 없음"
-            var clickTime = basicKinderInfo?.hpaddr ?: "운영시간 정보 없음"
+            var clickTime = basicKinderInfo?.opertime ?: "운영시간 정보 없음"
 
             val safeInfoDeferred = async {
                 try {
