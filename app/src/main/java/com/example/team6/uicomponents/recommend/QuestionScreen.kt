@@ -34,7 +34,7 @@ fun QuestionScreen(navController: NavHostController) {
         horizontalAlignment = Alignment.Start
     ) {
         Text(
-            text = "아이에게 딱 맞는 어린이집 찾기",
+            text = "아이에게 딱 맞는 유치원 찾기",
             fontSize = 20.sp,
             modifier = Modifier.padding(bottom = 24.dp)
         )

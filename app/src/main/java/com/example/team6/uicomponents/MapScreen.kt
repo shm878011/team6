@@ -1,5 +1,6 @@
 package com.example.team6.uicomponents
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,10 +46,11 @@ import com.naver.maps.map.overlay.OverlayImage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalNaverMapApi::class)
 @Composable
-fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
+fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel, onCameraMove: ((LatLng) -> Unit)? = null) {
     val defaultPosition = LatLng(37.5408, 127.0793)
     val currentPosition = viewModel.currentLocation ?: defaultPosition
 
@@ -60,7 +63,16 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
     val checklist by viewModel.checklist.collectAsState()
 
-
+    // 카메라 이동 함수를 외부에서 호출할 수 있도록 설정
+    LaunchedEffect(onCameraMove) {
+        onCameraMove?.let { moveFunction ->
+            viewModel.setCameraMoveFunction { latLng ->
+                cameraPositionState.move(
+                    CameraUpdate.toCameraPosition(CameraPosition(latLng, 15.0))
+                )
+            }
+        }
+    }
 
     LaunchedEffect(viewModel.currentLocation) {
         viewModel.currentLocation?.let {
@@ -70,8 +82,6 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             trackingMode.value = LocationTrackingMode.None // 수동 위치 설정 시, 자동 추적 해제
         }
     }
-
-
 
     Box(modifier = modifier.fillMaxSize()) {
         //지도
@@ -96,33 +106,32 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
             // 필터링된 유치원들 마커로 표시
             checklist.forEach { kindergarten ->
-                if (kindergarten.latitude != 0.0 && kindergarten.longitude != 0.0) {
-                    Marker(
-                        state = rememberMarkerState(position = LatLng(kindergarten.latitude!!, kindergarten.longitude!!)),
-                        captionText = kindergarten.kindername,
-                        icon = OverlayImage.fromResource(R.drawable.marker2),
-                        width = 48.dp,
-                        height = 48.dp,
-                        onClick = {
-                            // 주소 기반으로 시도/시군구 이름 추출
-                            val sidoSggCodeMap = viewModel.nameToMapCode
-                            var sido = ""
-                            var sgg = ""
-                            for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
-                                if (kindergarten.addr.contains(sidoCandidate) && kindergarten.addr.contains(sggCandidate)) {
-                                    sido = sidoCandidate
-                                    sgg = sggCandidate
-                                    break
-                                }
+                // 🔥 checklist에서 이미 유효한 좌표만 필터링했으므로 모든 항목을 마커로 표시
+                Marker(
+                    state = rememberMarkerState(position = LatLng(kindergarten.latitude!!, kindergarten.longitude!!)),
+                    captionText = kindergarten.kindername,
+                    icon = OverlayImage.fromResource(R.drawable.marker2),
+                    width = 48.dp,
+                    height = 48.dp,
+                    onClick = {
+                        // 주소 기반으로 시도/시군구 이름 추출
+                        val sidoSggCodeMap = viewModel.nameToMapCode
+                        var sido = ""
+                        var sgg = ""
+                        for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                            if (kindergarten.addr.contains(sidoCandidate) && kindergarten.addr.contains(sggCandidate)) {
+                                sido = sidoCandidate
+                                sgg = sggCandidate
+                                break
                             }
-
-                            viewModel.populateClickData(sido, sgg, kindergarten.kindername)
-                            viewModel.setClickList(kindergarten)
-                            viewModel.updateNearbyZones(kindergarten.latitude!!, kindergarten.longitude!!)
-                            true // 클릭 이벤트 소비
                         }
-                    )
-                }
+
+                        viewModel.populateClickData(sido, sgg, kindergarten.kindername)
+                        viewModel.setClickList(kindergarten)
+                        viewModel.updateNearbyZones(kindergarten.latitude!!, kindergarten.longitude!!)
+                        true // 클릭 이벤트 소비
+                    }
+                )
             }
             val schoolZones by viewModel.nearbyZones.collectAsState()
             schoolZones.forEach {
@@ -159,6 +168,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 }
 
 
+@SuppressLint("CoroutineCreationDuringComposition")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalNaverMapApi::class)
 @Composable
 fun MapScreen(viewModel: MainViewModel) {
@@ -170,8 +180,11 @@ fun MapScreen(viewModel: MainViewModel) {
     var query by remember { mutableStateOf("") }
     var filteredNurseries by remember { mutableStateOf<List<Nursery>>(emptyList()) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    // 🔥 상태 업데이트 강제 트리거용
+    var forceUpdate by remember { mutableStateOf(0) }
 
     val likedNurseries = viewModel.likedNurseries
+    val selectedReviewKinder = viewModel.selectedReviewNursery.collectAsState().value
 
     val kindergartenList by viewModel.kindergartenList.collectAsState()
     val checklist by viewModel.checklist.collectAsState()
@@ -181,20 +194,60 @@ fun MapScreen(viewModel: MainViewModel) {
 
     val context = LocalContext.current
 
+    var loding by remember { mutableStateOf(false) }
     // 최초 진입 시 한 번만 CSV 로드
     LaunchedEffect(Unit) {
+        viewModel.closeReviewCard()
+        viewModel.clearClickList()
         viewModel.loadSchoolZones(context)
+        scope.launch { // 비동기 작업을 위한 코루틴 스코프 시작
+            viewModel.changedistance("-")
+            val sidoSggCodeMap = viewModel.nameToMapCode
+            var sido = ""
+            var sgg = ""
+            for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                if (currentAddress.contains(sidoCandidate) && currentAddress.contains(sggCandidate)) {
+                    sido = sidoCandidate
+                    sgg = sggCandidate
+                    break
+                }
+            }
+            val fetchJobs = mutableListOf<Job>()
+
+            fetchJobs.add(launch {viewModel.fetchKindergartenData(sido, sgg) })
+            fetchJobs.add(launch {viewModel.RemoveBus()})
+            fetchJobs.add(launch {viewModel.RemovePlayground()})
+            fetchJobs.add(launch {viewModel.RemoveCCTV()})
+            fetchJobs.add(launch {viewModel.Canadmission(false)})
+
+            fetchJobs.joinAll()
+
+            viewModel.updateChecklist()
+            loding = true
+        }
     }
+
 
 
     // 💡 항상 UI를 보여줌
     Box(modifier = Modifier.fillMaxSize()) {
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
         ){
-            NaverMapScreen(modifier = Modifier.fillMaxSize(),viewModel)
+            // 🔥 forceUpdate로 강제 리컴포지션
+            key(forceUpdate) {
+                if (loding)
+                {
+                    NaverMapScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        viewModel = viewModel,
+                        onCameraMove = { latLng ->
+                            viewModel.moveCameraToLocation(latLng)
+                        }
+                    )
+                }
+            }
         }
 
         // 상단 검색/필터 바
@@ -215,7 +268,13 @@ fun MapScreen(viewModel: MainViewModel) {
                 placeholder = { Text("검색") },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(56.dp)
+                    .background(Color.White, shape = RoundedCornerShape(12.dp)),
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                )
             )
 
             Icon(
@@ -229,24 +288,33 @@ fun MapScreen(viewModel: MainViewModel) {
 
         // 💡 조건부로 BottomSheet 띄우기
         if (checklist.isNotEmpty() && showBottomSheet) {
-            BottomSheetScaffold(
-                scaffoldState = scaffoldState,
-                sheetContent = {
-                    LazyColumn(modifier = Modifier.padding(16.dp)) {
-                        items(checklist) { kinderinfo ->
-                            NurseryListItem(kinderinfo = kinderinfo, onClick = {
-                                //clicklist = kinderinfo
-                                viewModel.setClickList(kinderinfo)
-                                scope.launch {
-                                    scaffoldState.bottomSheetState.partialExpand()
-                                }
-                            })
+            // 🔥 forceUpdate로 강제 리컴포지션
+            key(forceUpdate) {
+                BottomSheetScaffold(
+                    scaffoldState = scaffoldState,
+                    sheetContent = {
+                        LazyColumn(modifier = Modifier.padding(16.dp)) {
+                            items(checklist) { kinderinfo ->
+                                NurseryListItem(kinderinfo = kinderinfo, onClick = {
+                                    //clicklist = kinderinfo
+                                    viewModel.setClickList(kinderinfo)
+                                    
+                                    // 카메라를 해당 유치원 위치로 이동
+                                    if (kinderinfo.latitude != 0.0 && kinderinfo.longitude != 0.0) {
+                                        viewModel.moveCameraToLocation(LatLng(kinderinfo.latitude!!, kinderinfo.longitude!!))
+                                    }
+                                    
+                                    scope.launch {
+                                        scaffoldState.bottomSheetState.partialExpand()
+                                    }
+                                })
+                            }
                         }
-                    }
-                },
-                sheetPeekHeight = 64.dp,
-                sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            ) {}
+                    },
+                    sheetPeekHeight = 64.dp,
+                    sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                ) {}
+            }
         }
 
         // 필터 모달
@@ -303,7 +371,13 @@ fun MapScreen(viewModel: MainViewModel) {
                         fetchJobs.joinAll()
 
                         viewModel.updateChecklist()
+                        
+                        // 🔥 상태 업데이트 강제 트리거
+                        showBottomSheet = false
+                        delay(100) // 잠시 대기
                         showBottomSheet = checklist.isNotEmpty()
+                        forceUpdate++ // 강제 리컴포지션 트리거
+                        
                         showFilter = false
                     }
                 }
@@ -325,17 +399,34 @@ fun MapScreen(viewModel: MainViewModel) {
             LaunchedEffect(sido, sgg, clicklist!!.kindername) {
                 viewModel.populateClickData(sido, sgg, clicklist!!.kindername)
             }
+            
+            // 🔥 clicklist가 변경될 때마다 해당 유치원의 리뷰를 로드
+            LaunchedEffect(clicklist!!.kindername) {
+                viewModel.loadReviews(clicklist!!.kindername)
+            }
+            
+            val reviewCount by viewModel.reviewList.collectAsState()
+            val averageRating by viewModel.averageRating.collectAsState()
+            
             NurseryDetailCard(
                 nursery = clickData,
                 isLiked = viewModel.isLiked(it),
+                reviewCount = reviewCount.size,
+                averageRating = averageRating,
                 onLikeToggle = { viewModel.toggleLike(it) },
-                onReviewClick = { /* TODO */ },
+                onReviewClick = { viewModel.openReviewCard(clickData) },
                 onClose = { viewModel.clearClickList() },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+
+        if (selectedReviewKinder != null) {
+            ReviewCardBottomSheet(viewModel = viewModel)
+        }
+
     }
 }
+
 
 
 @Composable
@@ -423,6 +514,8 @@ fun NurseryListItem(kinderinfo: KinderInfo, onClick: () -> Unit) {
 fun NurseryDetailCard(
     nursery: Click,
     isLiked: Boolean,
+    reviewCount: Int,
+    averageRating:Float,
     onLikeToggle: () -> Unit,
     onReviewClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -451,6 +544,36 @@ fun NurseryDetailCard(
             Text(nursery.address)
             Text(nursery.phone.toString())
             Spacer(modifier = Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "리뷰 ${reviewCount}",
+                    color = Color.Blue,
+                    modifier = Modifier.clickable { onReviewClick() }
+                )
+
+                if (averageRating > 0f) {
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // 별점으로 평균 표현
+                    val fullStars = averageRating.toInt()
+                    val hasHalfStar = (averageRating - fullStars) >= 0.5f
+
+                    Row {
+                        repeat(fullStars) {
+                            Text("★", color = Color(0xFFFFC107))
+                        }
+                        if (hasHalfStar) {
+                            Text("★", color = Color(0x80FFC107)) // 반별 효과: 투명도 적용
+                        }
+                        repeat(5 - fullStars - if (hasHalfStar) 1 else 0) {
+                            Text("★", color = Color.LightGray)
+                        }
+                    }
+                }
+            }
+
+
             Row {
                 Text("CCTV: ${nursery.cctv_ist_total}", modifier = Modifier.weight(1f))
                 Text("놀이터: ${nursery.plyg_ck_yn}", modifier = Modifier.weight(1f))
@@ -464,6 +587,14 @@ fun NurseryDetailCard(
                 )
                 Text("교직원 수: ${nursery.staffCount}", modifier = Modifier.weight(1f))
                 Text("통학차량: ${nursery.vhcl_oprn_yn}", modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("홈페이지: ${nursery.homepage}", modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("운영시간: ${nursery.time}", modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
 //            Text(

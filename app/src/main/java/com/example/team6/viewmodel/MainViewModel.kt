@@ -33,8 +33,20 @@ import java.io.InputStreamReader
 import java.nio.charset.Charset
 import kotlin.collections.List
 import kotlin.collections.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 
 import android.location.Location
+import android.util.Log.e
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.team6.model.Review
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.flow.map
 
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -69,11 +81,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val CURRENT_LOCATION_LNG_KEY = "current_location_longitude"
     private val DEFAULT_LATITUDE = 37.5408
     private val DEFAULT_LONGITUDE = 127.0793
+    private val CURRENT_ADDRESS_KEY = "current_address_key"
+    private val DEFAULT_ADDRESS = "대한민국 서울특별시 광진구 능동로 120"
 
     var currentLocation by mutableStateOf<LatLng?>(null)
         private set
 
-    private val _addressText = MutableStateFlow("서울특별시 광진구 능동로 120 건국대학교")
+    private val _addressText = MutableStateFlow(DEFAULT_ADDRESS)
     val addressText: StateFlow<String> = _addressText
 
     fun updateLocation(latLng: LatLng) {
@@ -100,6 +114,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         region?.area3?.name
                     ).joinToString(" ")
                     _addressText.value = fullAddress
+                    var sido = ""
+                    var sgg = ""
+                    for ((sidoCandidate, sggCandidate) in nameToMapCode) {
+                            if (addressText.value.contains(sidoCandidate.first) && _addressText.value.contains(sidoCandidate.second)) {
+                                Log.d(TAG, "${addressText.value} ${sidoCandidate}")
+                                sido = sidoCandidate.first
+                                sgg = sidoCandidate.second
+                                break
+                            }
+                        }
+                        fetchKindergartenData(sido, sgg)
+                        RemoveBus()
+                        RemovePlayground()
+                        RemoveCCTV()
+                        Canadmission(false)
                 } else {
                     _addressText.value = "주소를 찾을 수 없습니다"
                 }
@@ -231,7 +260,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         current = 0,
         staffCount = 0,
         vhcl_oprn_yn = "",
-        homepage = ""
+        homepage = "",
+        time = ""
     ))
     val clickdata: StateFlow<Click> = _clickdata
 
@@ -251,6 +281,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val savedLat = sharedPrefs.getFloat(CURRENT_LOCATION_LAT_KEY, DEFAULT_LATITUDE.toFloat()).toDouble()
         val savedLng = sharedPrefs.getFloat(CURRENT_LOCATION_LNG_KEY, DEFAULT_LONGITUDE.toFloat()).toDouble()
         currentLocation = LatLng(savedLat, savedLng)
+        val savedAddress = sharedPrefs.getString(CURRENT_ADDRESS_KEY, DEFAULT_ADDRESS) ?: DEFAULT_ADDRESS
+        _addressText.value = savedAddress // _addressText의 초기값으로 설정
+
+        // _addressText 변경 감지 및 SharedPreferences에 저장
+        viewModelScope.launch {
+            _addressText.collect { newAddress ->
+                with(sharedPrefs.edit()) {
+                    putString(CURRENT_ADDRESS_KEY, newAddress)
+                    apply()
+                }
+                Log.d(TAG, "주소 저장됨: $newAddress")
+            }
+        }
 
 
         val client = OkHttpClient.Builder()
@@ -279,9 +322,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val tempSidoSggMap = mutableMapOf<String, MutableList<String>>()
 
                 val rowIterator = sheet.iterator()
-                if (rowIterator.hasNext()) {
-                    rowIterator.next() // 헤더 스킵
-                }
 
                 while (rowIterator.hasNext()) {
                     val row = rowIterator.next()
@@ -369,7 +409,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.Main) {
                     _kindergartenList.value = kindergartens
                     Log.d(TAG, "CSV 파일 로드 완료, 총 ${kindergartens.size}개 유치원 데이터")
-                    updateChecklist()
                 }
 
             } catch (e: Exception) {
@@ -389,23 +428,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val (sidoCode, sggCode) = codes
-        try {
-            val response = kindergartenApiService.getKindergartenBasicInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val (sidoCode, initialSggCode) = codes // initialSggCode는 첫 호출 시 사용되지만, 모든 SGG를 가져올 때 필요 없음
 
-            if (response.status == "SUCCESS") {
-                Log.d(TAG, "API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${response.kinderInfo?.size ?: 0}")
-                _kindergartenBasicList.value = response.kinderInfo ?: emptyList()
-            } else {
-                Log.e(TAG, "API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
-                _kindergartenBasicList.value = emptyList()
-            }
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-        } catch (e: Exception) {
-            Log.e(TAG, "네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _kindergartenBasicList.value = emptyList()
+            return
         }
+
+        val allBasicInfo = mutableListOf<BasicInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<BasicInfo>>>()
+
+        // 각 sggCode에 대해 API 호출을 비동기적으로 시작
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenBasicInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        Log.d(TAG, "API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${response.kinderInfo?.size ?: 0}")
+                        response.kinderInfo ?: emptyList()
+                    } else {
+                        Log.e(TAG, "API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        // 모든 비동기 호출이 완료될 때까지 기다리고 결과를 취합
+        val results = deferredCalls.awaitAll()
+        results.forEach { allBasicInfo.addAll(it) }
+
+        _kindergartenBasicList.value = allBasicInfo.distinctBy { it.kindercode } // 중복 제거 (유치원 코드 기준)
+        Log.d(TAG, "모든 시군구 데이터 로드 완료, 총 ${_kindergartenBasicList.value.size}개 유치원 데이터")
     }
+
 
 
     fun getSidoSggCodesByName(sidoName: String, sggName: String): Pair<String, String>? {
@@ -416,30 +478,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val codes = getSidoSggCodesByName(sidoName, sggName)
         if (codes == null) {
             Log.e(TAG, "해당 시도명($sidoName)과 시군구명($sggName)에 대한 코드를 찾을 수 없습니다.")
-            _schoolBusKindergartens.value = emptyList() // StateFlow 업데이트 (withContext 불필요)
+            _schoolBusKindergartens.value = emptyList()
             return
         }
 
-        val (sidoCode, sggCode) = codes
+        val (sidoCode, initialSggCode) = codes // initialSggCode는 첫 호출 시 사용되지만, 모든 SGG를 가져올 때 필요 없음
 
-        try {
-            val response = kindergartenApiService.getKindergartenSchoolBusInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-            if (response.status == "SUCCESS") {
-                val filteredList = response.schoolBusInfo
-                    ?.filterNotNull()
-                    ?.filter { it.vhcl_oprn_yn == "Y" }
-                    ?: emptyList()
-
-                _schoolBusKindergartens.value = filteredList
-                Log.d(TAG, "통학차량('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredList.size}")
-            } else {
-                Log.e(TAG, "통학차량 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                _schoolBusKindergartens.value = emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "통학차량 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _schoolBusKindergartens.value = emptyList()
+            return
+        }
+
+        val allSchoolBusInfo = mutableListOf<SchoolBusInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<SchoolBusInfo>>>()
+
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenSchoolBusInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        val filteredList = response.schoolBusInfo
+                            ?.filterNotNull()
+                            ?.filter { it.vhcl_oprn_yn == "Y" }
+                            ?: emptyList()
+                        Log.d(TAG, "통학차량 API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${filteredList.size}")
+                        filteredList
+                    } else {
+                        Log.e(TAG, "통학차량 API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "통학차량 API 네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        val results = deferredCalls.awaitAll()
+        results.forEach { allSchoolBusInfo.addAll(it) }
+
+        _schoolBusKindergartens.value = allSchoolBusInfo.distinctBy { it.kindercode } // 중복 제거
+        Log.d(TAG, "모든 시군구 통학차량 데이터 로드 완료, 총 ${_schoolBusKindergartens.value.size}개 유치원 데이터")
+    }
+
+
+    fun updateCheckList1(){
+        viewModelScope.launch {
+            Log.d(TAG, "시작")
+            var newChecklist: List<KinderInfo> = kindergartenList.value
+            _checklist.value = newChecklist
+            Log.d(TAG, "최종 Checklist 업데이트 완료: ${newChecklist.size}개 유치원.")
         }
     }
 
@@ -449,6 +540,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var newChecklist: List<KinderInfo> = kindergartenList.value
             var changelist: List<BasicInfo> = _kindergartenBasicList.value
             Log.d(TAG,"chagelist ${changelist}")
+            
+            // 🔥 첫 필터링 시 데이터 검증
+            Log.d(TAG, "kindergartenList 크기: ${kindergartenList.value.size}")
+            Log.d(TAG, "_kindergartenBasicList 크기: ${_kindergartenBasicList.value.size}")
+            Log.d(TAG, "schoolBusKindergartens 크기: ${schoolBusKindergartens.value.size}")
+            Log.d(TAG, "kindergartensWithSafePlayground 크기: ${kindergartensWithSafePlayground.value.size}")
+            Log.d(TAG, "_kindergartensWithCCTV 크기: ${_kindergartensWithCCTV.value.size}")
+            
             if (changelist.isNotEmpty() && schoolBusKindergartens.value.isNotEmpty()) {
                 val schoolBusNames = schoolBusKindergartens.value.map { Pair(it.kindercode, it.kindername) }.toSet()
                 changelist = changelist.filter { kinderInfo ->
@@ -479,21 +578,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 changelist = changelist.filter { kinderInfo ->
                     Pair(kinderInfo.kindercode, kinderInfo.kindername) in CCTVKinderNames
                 }
-                Log.d(TAG, "Checklist 업데이트 (모드: 놀이터 안전): ${changelist.size}개 유치원 매칭.")
+                Log.d(TAG, "Checklist 업데이트 (모드: CCTV): ${changelist.size}개 유치원 매칭.")
             } else {
-                Log.d(TAG, "Checklist 업데이트(놀이터 안전): 원본 리스트 중 하나 이상이 비어있음.")
+                Log.d(TAG, "Checklist 업데이트(CCTV): 원본 리스트 중 하나 이상이 비어있음.")
             }
             if (changelist.isNotEmpty()){
                 val CHANGE = changelist.map { Pair(it.kindername, it.addr) }.toSet()
                 newChecklist = newChecklist.filter { kinderInfo ->
                     Pair(kinderInfo.kindername, kinderInfo.addr) in CHANGE
                 }
+                Log.d(TAG, "BasicInfo 매칭 후 newChecklist 크기: ${newChecklist.size}")
+            }
+            else{
+                newChecklist = emptyList()
+                Log.d(TAG, "changelist가 비어있어서 newChecklist를 비움")
             }
 
             if(newChecklist.isNotEmpty() && _Canadmission){
                 newChecklist = newChecklist.filter { KinderInfo->
                     KinderInfo.totalCapacity > KinderInfo.current
                 }
+                Log.d(TAG, "입소 가능 필터링 후: ${newChecklist.size}개")
             }
 
             if(newChecklist.isNotEmpty() && Rangelocation > 0){
@@ -517,6 +622,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            // 🔥 좌표 유효성 검사 추가 - 카드와 마커 일치시키기
+            val beforeCoordinateFilter = newChecklist.size
+            newChecklist = newChecklist.filter { kinderInfo ->
+                kinderInfo.latitude != 0.0 && kinderInfo.longitude != 0.0 &&
+                kinderInfo.latitude != null && kinderInfo.longitude != null &&
+                kinderInfo.latitude in -90.0..90.0 && kinderInfo.longitude in -180.0..180.0
+            }
+            Log.d(TAG, "좌표 필터링 전: ${beforeCoordinateFilter}개, 후: ${newChecklist.size}개")
+
             _checklist.value = newChecklist
             Log.d(TAG, "최종 Checklist 업데이트 완료: ${newChecklist.size}개 유치원.")
         }
@@ -530,28 +644,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val (sidoCode, sggCode) = codes
+        val (sidoCode, initialSggCode) = codes
 
-        try {
-            val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-            if (response.status == "SUCCESS") {
-                val filteredAndSummarizedList = response.safeInfo
-                    ?.filterNotNull()
-                    ?.filter { it.plyg_ck_yn == "Y" }
-                    ?: emptyList()
-
-                _kindergartensWithSafePlayground.value = filteredAndSummarizedList
-                Log.d(TAG, "놀이터 안전점검('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}")
-            } else {
-                Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                _kindergartensWithSafePlayground.value = emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _kindergartensWithSafePlayground.value = emptyList()
+            return
         }
+
+        val allSafePlaygroundInfo = mutableListOf<SafeInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<SafeInfo>>>()
+
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        val filteredAndSummarizedList = response.safeInfo
+                            ?.filterNotNull()
+                            ?.filter { it.plyg_ck_yn == "Y" }
+                            ?: emptyList()
+                        Log.d(TAG, "놀이터 안전점검 API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${filteredAndSummarizedList.size}")
+                        filteredAndSummarizedList
+                    } else {
+                        Log.e(TAG, "안전 정보 API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        val results = deferredCalls.awaitAll()
+        results.forEach { allSafePlaygroundInfo.addAll(it) }
+
+        _kindergartensWithSafePlayground.value = allSafePlaygroundInfo.distinctBy { it.kindercode } // 중복 제거
+        Log.d(TAG, "모든 시군구 놀이터 안전점검 데이터 로드 완료, 총 ${_kindergartensWithSafePlayground.value.size}개 유치원 데이터")
     }
+
 
     suspend fun fetchKindergartensWithSafeCCTV(sidoName: String, sggName: String) {
         val codes = getSidoSggCodesByName(sidoName, sggName)
@@ -561,28 +695,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val (sidoCode, sggCode) = codes
+        val (sidoCode, initialSggCode) = codes
 
-        try {
-            val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+        val sggCodesForSido = allSidoSggCodes[sidoCode]
 
-            if (response.status == "SUCCESS") {
-                val filteredAndSummarizedList = response.safeInfo
-                    ?.filterNotNull()
-                    ?.filter { it.cctv_ist_yn == "Y" }
-                    ?: emptyList()
-
-                _kindergartensWithCCTV.value = filteredAndSummarizedList
-                Log.d(TAG, "CCTV('Y') 유치원 목록 로드 성공 (${sidoName}-${sggName}), 데이터 수: ${filteredAndSummarizedList.size}") // 로그 메시지 수정
-            } else {
-                Log.e(TAG, "안전 정보 API 응답 실패 (${sidoName}-${sggCode}): ${response.status}")
-                _kindergartensWithCCTV.value = emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoName}-${sggCode}): ${e.message}", e)
+        if (sggCodesForSido.isNullOrEmpty()) {
+            Log.e(TAG, "시도 코드($sidoCode)에 해당하는 시군구 코드를 찾을 수 없습니다.")
             _kindergartensWithCCTV.value = emptyList()
+            return
         }
+
+        val allSafeCCTVInfo = mutableListOf<SafeInfo>()
+        val deferredCalls = mutableListOf<Deferred<List<SafeInfo>>>()
+
+        for (sggCode in sggCodesForSido) {
+            deferredCalls.add(viewModelScope.async(Dispatchers.IO) {
+                try {
+                    val response = kindergartenApiService.getKindergartenSafetyInfo(YOUR_API_KEY, sidoCode, sggCode)
+                    if (response.status == "SUCCESS") {
+                        val filteredAndSummarizedList = response.safeInfo
+                            ?.filterNotNull()
+                            ?.filter { it.cctv_ist_yn == "Y" }
+                            ?: emptyList()
+                        Log.d(TAG, "CCTV API 호출 성공 (${sidoCode}-${sggCode}), 데이터 수: ${filteredAndSummarizedList.size}")
+                        filteredAndSummarizedList
+                    } else {
+                        Log.e(TAG, "안전 정보 API 응답 실패 (${sidoCode}-${sggCode}): ${response.status}")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "안전 정보 API 네트워크 또는 파싱 오류 (${sidoCode}-${sggCode}): ${e.message}", e)
+                    emptyList()
+                }
+            })
+        }
+
+        val results = deferredCalls.awaitAll()
+        results.forEach { allSafeCCTVInfo.addAll(it) }
+
+        _kindergartensWithCCTV.value = allSafeCCTVInfo.distinctBy { it.kindercode } // 중복 제거
+        Log.d(TAG, "모든 시군구 CCTV 데이터 로드 완료, 총 ${_kindergartensWithCCTV.value.size}개 유치원 데이터")
     }
+
 
     fun populateClickData(sidoName: String, sggName: String, kindername: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -603,7 +757,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         current = 0,
                         staffCount = 0,
                         vhcl_oprn_yn = "정보 없음",
-                        homepage = "홈페이지 정보 없음"
+                        homepage = "홈페이지 정보 없음",
+                        time = "운영시간 정보 없음"
                     )
                 }
                 return@launch
@@ -623,10 +778,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var clickRoomCount = 0
             var clickPlygCkYn = "N"
             var clickTotalCapacity = basicKinderInfo?.totalCapacity ?: 0
-            var clickCurrentStudents = basicKinderInfo?.current ?: 0
+            val clickCurrentStudents = listOf(
+                basicKinderInfo?.current3yrOlds ?: 0,
+                basicKinderInfo?.current4yrOlds ?: 0,
+                basicKinderInfo?.current5yrOlds ?: 0,
+                basicKinderInfo?.currentMixedOlds ?: 0,
+                basicKinderInfo?.currentSpecialNeedsOlds ?: 0
+            ).sum()
             var clickStaffCount = 0
             var clickVhclOprnYn = "N"
             var clickHomepage = basicKinderInfo?.hpaddr ?: "홈페이지 정보 없음"
+            var clickTime = basicKinderInfo?.opertime ?: "운영시간 정보 없음"
 
             val safeInfoDeferred = async {
                 try {
@@ -703,7 +865,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     current = clickCurrentStudents,
                     staffCount = clickStaffCount,
                     vhcl_oprn_yn = clickVhclOprnYn,
-                    homepage = clickHomepage
+                    homepage = clickHomepage,
+                    time = clickTime
                 )
                 Log.d(TAG, "ClickData 업데이트 완료: $_clickdata.value")
             }
@@ -742,6 +905,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun changedistance(selectedDistance: String) {
+        if(selectedDistance == "-"){
+            Rangelocation = -10.0
+        }
         if(selectedDistance == "1km"){
             Rangelocation = 1.0
         }
@@ -754,6 +920,129 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         else if(selectedDistance == "10km"){
             Rangelocation = 10.0
         }
+    }
+
+    val reviewList = MutableStateFlow<List<Review>>(emptyList())
+    val selectedReviewNursery = MutableStateFlow<Click?>(null)
+
+    fun loadReviews(kinderCode: String) {
+        val db = FirebaseDatabase.getInstance().getReference("reviews").child(kinderCode)
+        db.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val list = snapshot.children.mapNotNull { snap ->
+                    val review = snap.getValue(Review::class.java)
+                    review?.key = snap.key  // 🔑 삭제용 key 추가
+                    review
+                }
+                reviewList.value = list.sortedByDescending { it.timestamp }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    fun openReviewCard(nursery: Click) {
+        selectedReviewNursery.value = nursery
+        loadReviews(nursery.name) // 유치원 이름을 고유 ID로 사용 중
+    }
+
+    fun closeReviewCard() {
+        selectedReviewNursery.value = null
+    }
+
+    fun submitReview(kinderName: String, text: String, rating: Int) {
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user != null) {
+            val uid = user.uid
+            val nickname = user.displayName ?: "익명"
+            val review = Review(
+                userId = uid,
+                nickname = nickname,
+                text = text,
+                rating = rating,
+                timestamp = System.currentTimeMillis()
+            )
+
+            val safeName = kinderName.replace(".", "_").replace("/", "_")  // 중요
+
+            val dbRef = FirebaseDatabase.getInstance()
+                .getReference("reviews")
+                .child(safeName)
+                .push()
+
+            dbRef.setValue(review)
+                .addOnSuccessListener {
+                    Log.d("Firebase", "리뷰 저장 성공")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("Firebase", "리뷰 저장 실패: ${e.message}")
+                }
+        } else {
+            Log.e("Firebase", "로그인된 유저 없음")
+        }
+    }
+
+
+    // 🔼 파일 상단 쪽
+    val _myReviewList = MutableStateFlow<List<Review>>(emptyList())
+    val myReviewList: StateFlow<List<Review>> = _myReviewList
+    val averageRating: StateFlow<Float> = reviewList
+        .map { list ->
+            if (list.isEmpty()) 0f else list.map { it.rating }.average().toFloat()
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0f)
+
+    // 🔽 아래쪽 함수들 사이에 추가
+    fun loadMyReviews() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db = FirebaseDatabase.getInstance().getReference("reviews")
+
+        db.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val myReviews = mutableListOf<Review>()
+                for (kinderSnapshot in snapshot.children) {
+                    for (reviewSnapshot in kinderSnapshot.children) {
+                        val review = reviewSnapshot.getValue(Review::class.java)
+                        review?.key = reviewSnapshot.key
+                        if (review?.userId == uid) {
+                            myReviews.add(review)
+                        }
+                    }
+                }
+                _myReviewList.value = myReviews.sortedByDescending { it.timestamp }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    fun deleteReview(review: Review) {
+        val db = FirebaseDatabase.getInstance()
+            .getReference("reviews")
+
+        // 모든 유치원을 순회하며 키가 일치하는 리뷰 삭제
+        db.get().addOnSuccessListener { snapshot ->
+            for (nurserySnap in snapshot.children) {
+                for (reviewSnap in nurserySnap.children) {
+                    if (reviewSnap.key == review.key) {
+                        nurserySnap.ref.child(review.key!!).removeValue()
+                        loadMyReviews()  // 삭제 후 갱신
+                        return@addOnSuccessListener
+                    }
+                }
+            }
+        }
+    }
+
+    // 카메라 이동 관련 함수들
+    private var cameraMoveFunction: ((LatLng) -> Unit)? = null
+
+    fun setCameraMoveFunction(function: (LatLng) -> Unit) {
+        cameraMoveFunction = function
+    }
+
+    fun moveCameraToLocation(latLng: LatLng) {
+        cameraMoveFunction?.invoke(latLng)
     }
 
 }

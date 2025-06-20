@@ -36,7 +36,7 @@ fun RecommendScreen(navController: NavHostController) {
         verticalArrangement = Arrangement.Top
     ) {
         Text(
-            text = "아이에게 딱 맞는 어린이집 찾기",
+            text = "아이에게 딱 맞는 유치원 찾기",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -53,7 +53,7 @@ fun RecommendScreen(navController: NavHostController) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "우리 아이에게 꼭 맞는 어린이집을\n찾아드릴게요!",
+            text = "우리 아이에게 꼭 맞는 유치원\n찾아드릴게요!",
             fontSize = 18.sp,
             textAlign = TextAlign.Center
         )

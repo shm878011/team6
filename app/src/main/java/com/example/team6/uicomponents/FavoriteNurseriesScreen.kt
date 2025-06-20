@@ -37,16 +37,19 @@ fun FavoriteNurseriesScreen(
 ) {
     var isLoading by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.clearClickList()
-        isLoading = true
-    }
+
     val clicklist by viewModel.clicklist.collectAsState()
     val clickData by viewModel.clickdata.collectAsState()
+    val selectedReviewKinder = viewModel.selectedReviewNursery.collectAsState().value
+    LaunchedEffect(Unit) {
+        viewModel.clearClickList()
+        viewModel.closeReviewCard()
+        isLoading = true
+    }
 
-    SubPage(title = "찜한 어린이집", navController = navController) {
+    SubPage(title = "찜한 유치원", navController = navController) {
         if (favorites.isEmpty()) {
-            Text("찜한 어린이집이 없습니다.", color = Color.Gray)
+            Text("찜한 유치원 없습니다.", color = Color.Gray)
         } else {
             LazyColumn {
                 items(favorites) { nursery ->
@@ -78,14 +81,20 @@ fun FavoriteNurseriesScreen(
                     NurseryDetailCard(
                         nursery = clickData,
                         isLiked = viewModel.isLiked(it),
+                        reviewCount = viewModel.reviewList.collectAsState().value.size,
+                        averageRating = viewModel.averageRating.collectAsState().value,
                         onLikeToggle = { viewModel.toggleLike(it) },
-                        onReviewClick = { /* TODO */ },
+                        onReviewClick = { viewModel.openReviewCard(clickData) },
                         onClose = { viewModel.clearClickList() },
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
+
                 }
             }
         }
+    }
+    if (selectedReviewKinder != null) {
+        ReviewCardBottomSheet(viewModel = viewModel)
     }
 }
 

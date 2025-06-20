@@ -19,28 +19,28 @@ fun BottomNavigationBar(navController: NavHostController) {
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
     NavigationBar(
-        containerColor = Color(0xeaeaea),
+        containerColor = Color(0xffffffff),
         modifier = Modifier.height(94.dp),
         tonalElevation = 8.dp
     ) {
-        BottomNavRoute.items.forEach { screen ->
-            val selected = currentDestination?.route == screen.route
+        BottomNavRoute.items.forEach { sAScreen ->
+            val selected = currentDestination?.route == sAScreen.route
             NavigationBarItem(
                 colors = NavigationBarItemDefaults.colors(
                     indicatorColor = Color.Transparent
                 ),
                 icon = {
                     Icon(
-                        screen.icon,
-                        contentDescription = screen.label,
+                        sAScreen.icon,
+                        contentDescription = sAScreen.label,
                         tint = if (selected) Color.Black else Color.Gray
                     )
                 },
-                label = { Text(screen.label) },
-                selected = currentDestination?.route == screen.route,
+                label = { Text(sAScreen.label) },
+                selected = currentDestination?.route == sAScreen.route,
                 onClick = {
-                    navController.navigate(screen.route) {
-                        popUpTo(screen.route) { inclusive = true }
+                    navController.navigate(sAScreen.route) {
+                        popUpTo(sAScreen.route) { inclusive = true }
                         launchSingleTop = true
                         restoreState = false
                     }

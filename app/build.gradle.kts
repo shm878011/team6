@@ -93,6 +93,7 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation("com.google.android.gms:play-services-safetynet:18.0.1")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
+    implementation("com.google.accompanist:accompanist-webview:0.28.0")
 }
 
 secrets{

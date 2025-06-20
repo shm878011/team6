@@ -3,6 +3,8 @@ package com.example.team6.uicomponents.info
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -11,9 +13,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 
 @Composable
-fun PlayDetailScreen() {
+fun PlayDetailScreen(navController: NavController)  {
     val scrollState = rememberScrollState()
 
     Column(
@@ -21,12 +24,29 @@ fun PlayDetailScreen() {
             .padding(20.dp)
             .verticalScroll(scrollState)
     ) {
-        Text(
-            text = "나이대별 놀이법 TOP 5",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 32.sp
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "나이대별 놀이법 TOP 5",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 32.sp
+            )
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "뒤로가기"
+                )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -80,13 +100,12 @@ fun PlayDetailScreen() {
             Spacer(Modifier.height(20.dp))
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.elevatedCardColors(containerColor = Color(0x55F9F6E6)),
+                colors = CardDefaults.elevatedCardColors(containerColor = Color(0x2EDCDCDC)),
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        text = "◼︎ $ageTitle", fontSize = 17.sp, fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4A90E2)
+                        text = "◼︎ $ageTitle", fontSize = 17.sp, fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(10.dp))
                     playList.forEach { item ->

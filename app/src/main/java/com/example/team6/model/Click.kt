@@ -11,5 +11,6 @@ data class Click(
     val current: Int,
     val staffCount: Int,
     val vhcl_oprn_yn: String,
-    val homepage: String
+    val homepage: String,
+    val time: String
 )
