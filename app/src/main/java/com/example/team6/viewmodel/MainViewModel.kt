@@ -35,6 +35,8 @@ import kotlin.collections.List
 import kotlin.collections.filter
 
 import android.location.Location
+import android.util.Log.e
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.team6.model.Review
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -106,6 +108,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         region?.area3?.name
                     ).joinToString(" ")
                     _addressText.value = fullAddress
+                    var sido = ""
+                    var sgg = ""
+                    for ((sidoCandidate, sggCandidate) in nameToMapCode) {
+                            if (addressText.value.contains(sidoCandidate.first) && _addressText.value.contains(sidoCandidate.second)) {
+                                sido = sidoCandidate.first
+                                sgg = sidoCandidate.second
+                                break
+                            }
+                        }
+                        fetchKindergartenData(sido, sgg)
+                        RemoveBus()
+                        RemovePlayground()
+                        RemoveCCTV()
+                        Canadmission(false)
                 } else {
                     _addressText.value = "주소를 찾을 수 없습니다"
                 }
@@ -376,7 +392,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.Main) {
                     _kindergartenList.value = kindergartens
                     Log.d(TAG, "CSV 파일 로드 완료, 총 ${kindergartens.size}개 유치원 데이터")
-                    updateCheckList1()
                 }
 
             } catch (e: Exception) {
@@ -873,6 +888,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun changedistance(selectedDistance: String) {
+        if(selectedDistance == "-"){
+            Rangelocation = -10.0
+        }
         if(selectedDistance == "1km"){
             Rangelocation = 1.0
         }

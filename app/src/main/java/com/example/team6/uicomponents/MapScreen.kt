@@ -1,5 +1,6 @@
 package com.example.team6.uicomponents
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -166,6 +167,7 @@ fun NaverMapScreen(modifier: Modifier = Modifier, viewModel: MainViewModel, onCa
 }
 
 
+@SuppressLint("CoroutineCreationDuringComposition")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalNaverMapApi::class)
 @Composable
 fun MapScreen(viewModel: MainViewModel) {
@@ -193,7 +195,32 @@ fun MapScreen(viewModel: MainViewModel) {
     // 최초 진입 시 한 번만 CSV 로드
     LaunchedEffect(Unit) {
         viewModel.loadSchoolZones(context)
+        scope.launch { // 비동기 작업을 위한 코루틴 스코프 시작
+            viewModel.changedistance("-")
+            val sidoSggCodeMap = viewModel.nameToMapCode
+            var sido = ""
+            var sgg = ""
+            for ((sidoCandidate, sggCandidate) in sidoSggCodeMap.keys) {
+                if (currentAddress.contains(sidoCandidate) && currentAddress.contains(sggCandidate)) {
+                    sido = sidoCandidate
+                    sgg = sggCandidate
+                    break
+                }
+            }
+            val fetchJobs = mutableListOf<Job>()
+
+            fetchJobs.add(launch {viewModel.fetchKindergartenData(sido, sgg) })
+            fetchJobs.add(launch {viewModel.RemoveBus()})
+            fetchJobs.add(launch {viewModel.RemovePlayground()})
+            fetchJobs.add(launch {viewModel.RemoveCCTV()})
+            fetchJobs.add(launch {viewModel.Canadmission(false)})
+
+            fetchJobs.joinAll()
+
+            viewModel.updateChecklist()
+        }
     }
+
 
 
     // 💡 항상 UI를 보여줌
@@ -230,16 +257,9 @@ fun MapScreen(viewModel: MainViewModel) {
                     showBottomSheet = checklist.isNotEmpty()
                 },
                 placeholder = { Text("검색") },
-                colors = TextFieldDefaults.textFieldColors(
-                    containerColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .height(56.dp)
+                    .height(48.dp)
             )
 
             Icon(
