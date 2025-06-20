@@ -560,10 +560,6 @@ fun NurseryDetailCard(
                 Text("운영시간: ${nursery.time}", modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("전화번호: ${nursery.phone}", modifier = Modifier.weight(1f))
-            }
-            Spacer(modifier = Modifier.height(8.dp))
 //            Text(
 //                text = "리뷰 ${nursery.reviewCount}",
 //                color = Color.Blue,
