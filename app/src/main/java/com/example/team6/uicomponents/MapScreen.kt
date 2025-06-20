@@ -419,7 +419,6 @@ fun MapScreen(viewModel: MainViewModel) {
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
-
         if (selectedReviewKinder != null) {
             ReviewCardBottomSheet(viewModel = viewModel)
         }
