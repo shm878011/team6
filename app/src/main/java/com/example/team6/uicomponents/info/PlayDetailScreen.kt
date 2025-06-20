@@ -80,7 +80,7 @@ fun PlayDetailScreen() {
             Spacer(Modifier.height(20.dp))
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.elevatedCardColors(containerColor = Color(0x55F9F6E6)),
+                colors = CardDefaults.elevatedCardColors(containerColor = Color(0x2EDCDCDC)),
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
