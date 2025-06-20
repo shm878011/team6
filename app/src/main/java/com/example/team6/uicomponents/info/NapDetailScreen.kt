@@ -40,7 +40,7 @@ fun NapDetailScreen() {
         SectionTitle("1. 규칙적인 낮잠 시간 설정")
         SectionText("매일 일정한 시간에 낮잠을 유도하면 생체 리듬이 안정되고, 아이에게 예측 가능한 패턴이 생겨 심리적 안정감이 형성됩니다.")
 
-        SectionTitle("2. 수면 신호 만들기 (Nap Routine)")
+        SectionTitle("2. 수면 신호 만들기")
         SectionText(
             "낮잠 전에 반복되는 루틴을 정해주세요. 예: \n" +
                     "• 조용한 음악 재생\n" +
@@ -87,7 +87,6 @@ fun SectionTitle(title: String) {
         text = title,
         fontSize = 17.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF4A90E2),
         lineHeight = 24.sp
     )
     Spacer(Modifier.height(8.dp))

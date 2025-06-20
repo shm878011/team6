@@ -85,8 +85,7 @@ fun PlayDetailScreen() {
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        text = "◼︎ $ageTitle", fontSize = 17.sp, fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4A90E2)
+                        text = "◼︎ $ageTitle", fontSize = 17.sp, fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(10.dp))
                     playList.forEach { item ->
